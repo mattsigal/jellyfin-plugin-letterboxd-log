@@ -63,6 +63,12 @@ public class LetterboxdApi
                 };
                 cookieContainer.Add(baseUri, cookie);
 
+                var dotCookie = new Cookie(name, val, "/", ".letterboxd.com")
+                {
+                    HttpOnly = false,
+                };
+                cookieContainer.Add(baseUri, dotCookie);
+
                 if (string.Equals(name, "com.xk72.webparts.csrf", StringComparison.OrdinalIgnoreCase))
                 {
                     this.csrf = val;
@@ -185,8 +191,15 @@ public class LetterboxdApi
         // If user injected real browser cookies, don't try the login POST (Cloudflare blocks it).
         if (HasAuthenticatedSession())
         {
-            await RefreshCsrfCookieAsync().ConfigureAwait(false);
-            return;
+            try
+            {
+                await RefreshCsrfCookieAsync().ConfigureAwait(false);
+                return;
+            }
+            catch
+            {
+                // If refreshing CSRF fails (e.g. cookies expired), proceed to normal login.
+            }
         }
 
         // 0) Initial delay to avoid "speeding"

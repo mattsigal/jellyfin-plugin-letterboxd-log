@@ -81,6 +81,7 @@ public class LetterboxdSyncTask : IScheduledTask
             var api = new LetterboxdApi();
             try
             {
+                api.SetRawCookies(account.CookiesRaw);
                 await api.Authenticate(account.UserLetterboxd, account.PasswordLetterboxd).ConfigureAwait(false);
             }
             catch (Exception ex)
