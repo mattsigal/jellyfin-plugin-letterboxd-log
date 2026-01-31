@@ -19,6 +19,14 @@
     "imageUrl": "https://raw.githubusercontent.com/danielveigasilva/jellyfin-plugin-letterboxd-sync/master/images/letterboxd-sync.png",
     "versions": [
       {
+        "version": "1.1.9.0",
+        "changelog": "- chore: fix csrf and cloudflare error; add cookies input on settings (148e3e6)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/hrqmonteiro/jellyfin-plugin-letterboxd-sync/releases/download/v1.1.9/jellyfin-plugin-letterboxd-sync-v1.1.9.zip",
+        "checksum": "2780e2f0d083247fcba12514c7ebde66",
+        "timestamp": "2026-01-31T22:07:26Z"
+      },
+      {
         "version": "1.1.8.0",
         "changelog": "- update: add ability to restrict lookback on film updates to avoid letterboxd load (005c655)",
         "targetAbi": "10.11.0.0",
