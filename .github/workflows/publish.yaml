@@ -8,6 +8,7 @@ on:
             - jf-10.11
         paths-ignore:
             - 'README.md'
+            - 'images/**'
 
 permissions:
   contents: write

@@ -44,3 +44,36 @@ https://raw.githubusercontent.com/hrqmonteiro/jellyfin-plugin-letterboxd-sync/ma
 <p align="center">
     <img src="/images/config-page.png" width="70%">
 </p>
+
+## Add raw cookies (In case you are getting 403 Error when authenticating)
+
+If you try to authenticate and receive a 403 error:
+
+<p align="center">
+    <img src="/images/config-page-403-error.png" width="70%">
+</p>
+
+That means Cloudflare is preventing you logging in. To bypass this, you need to log in letterboxd in a browser and copy the cookies from the request headers,
+which is usually the first request on the page.
+
+So activate Developer Tools in your browser (usually F12) and go to the Network tab:
+
+<p align="center">
+    <img src="/images/readme-request.png" width="70%">
+</p>
+
+Reload the page and click on the first request (on "/"), like the image, and scroll below until the request headers and you will see the Cookie:
+
+<p align="center">
+    <img src="/images/readme-request-headers.png" width="70%">
+</p>
+
+Be sure to right click and click on `Copy value`, just selecting with your mouse will not work.
+
+Then paste that into the Raw Cookies section in the Plugin settings:
+
+<p align="center">
+    <img src="/images/config-page-raw-cookies.png" width="70%">
+</p>
+
+That should bypass the Cloudflare protection and allow you to login.
