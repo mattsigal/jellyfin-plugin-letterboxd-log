@@ -23,6 +23,7 @@ export default function (view, params) {
                 });
                 view.querySelector('#username').value = configUserFilter[0].UserLetterboxd;
                 view.querySelector('#password').value = configUserFilter[0].PasswordLetterboxd;
+                view.querySelector('#cookiesraw').value = configUserFilter[0].CookiesRaw || '';
                 view.querySelector('#enable').checked = configUserFilter[0].Enable;
                 view.querySelector('#sendfavorite').checked = configUserFilter[0].SendFavorite;
                 view.querySelector('#enabledatefilter').checked = configUserFilter[0].EnableDateFilter || false;
@@ -46,6 +47,7 @@ export default function (view, params) {
             if (configUserFilter.length > 0) {
                 view.querySelector('#username').value = configUserFilter[0].UserLetterboxd;
                 view.querySelector('#password').value = configUserFilter[0].PasswordLetterboxd;
+                view.querySelector('#cookiesraw').value = configUserFilter[0].CookiesRaw || '';
                 view.querySelector('#enable').checked = configUserFilter[0].Enable;
                 view.querySelector('#sendfavorite').checked = configUserFilter[0].SendFavorite;
                 view.querySelector('#enabledatefilter').checked = configUserFilter[0].EnableDateFilter || false;
@@ -54,6 +56,7 @@ export default function (view, params) {
             else {
                 view.querySelector('#username').value = '';
                 view.querySelector('#password').value = '';
+                view.querySelector('#cookiesraw').value = '';
                 view.querySelector('#enable').checked = false;
                 view.querySelector('#sendfavorite').checked = false;
                 view.querySelector('#enabledatefilter').checked = false;
@@ -83,6 +86,7 @@ export default function (view, params) {
             configUser.UserJellyfin = userSelectedId;
             configUser.UserLetterboxd = view.querySelector('#username').value;
             configUser.PasswordLetterboxd = view.querySelector('#password').value;
+            configUser.CookiesRaw = view.querySelector('#cookiesraw').value;
             configUser.Enable = view.querySelector('#enable').checked;
             configUser.SendFavorite = view.querySelector('#sendfavorite').checked;
             configUser.EnableDateFilter = view.querySelector('#enabledatefilter').checked;
@@ -104,7 +108,7 @@ export default function (view, params) {
             }
             else {
                 ApiClient.ajax({ type: 'POST', url, data, contentType: 'application/json'}).then(function (response) {
-                
+
                     Dashboard.hideLoadingMsg();
                     
                     AccountsUpdate.push(configUser);

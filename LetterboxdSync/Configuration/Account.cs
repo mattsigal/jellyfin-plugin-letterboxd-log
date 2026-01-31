@@ -10,6 +10,8 @@ public class Account
 
     public string? PasswordLetterboxd { get; set; }
 
+    public string? CookiesRaw { get; set; }
+
     public bool Enable { get; set; }
 
     public bool SendFavorite { get; set; }

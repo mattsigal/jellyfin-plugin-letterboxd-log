@@ -17,7 +17,6 @@ namespace LetterboxdSync;
 public class LetterboxdSyncTask : IScheduledTask
 {
     private readonly ILogger _logger;
-    private readonly ILoggerFactory _loggerFactory;
     private readonly ILibraryManager _libraryManager;
     private readonly IUserManager _userManager;
     private readonly IUserDataManager _userDataManager;
@@ -29,7 +28,6 @@ public class LetterboxdSyncTask : IScheduledTask
             IUserDataManager userDataManager)
         {
             _logger = loggerFactory.CreateLogger<LetterboxdSyncTask>();
-            _loggerFactory = loggerFactory;
             _userManager = userManager;
             _libraryManager = libraryManager;
             _userDataManager = userDataManager;
@@ -65,7 +63,9 @@ public class LetterboxdSyncTask : IScheduledTask
             });
 
             if (lstMoviesPlayed.Count == 0)
+            {
                 continue;
+            }
 
             // Apply date filtering if enabled
             if (account.EnableDateFilter)
@@ -81,6 +81,7 @@ public class LetterboxdSyncTask : IScheduledTask
             var api = new LetterboxdApi();
             try
             {
+                api.SetRawCookies(account.CookiesRaw);
                 await api.Authenticate(account.UserLetterboxd, account.PasswordLetterboxd).ConfigureAwait(false);
             }
             catch (Exception ex)
@@ -124,8 +125,7 @@ public class LetterboxdSyncTask : IScheduledTask
                         }
                         else
                         {
-                            await api.MarkAsWatched(filmResult.filmId, viewingDate, tags, favorite).ConfigureAwait(false);
-
+                            await api.MarkAsWatched(filmResult.filmSlug, filmResult.filmId, viewingDate, tags, favorite).ConfigureAwait(false);
                             _logger.LogInformation(
                                 @"Film logged in Letterboxd
                                 User: {Username} ({UserId})
@@ -161,7 +161,6 @@ public class LetterboxdSyncTask : IScheduledTask
         }
 
         progress.Report(100);
-        return;
     }
 
     public IEnumerable<TaskTriggerInfo> GetDefaultTriggers() => new[]
