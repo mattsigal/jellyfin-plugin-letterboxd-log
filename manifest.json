@@ -23,6 +23,14 @@
     "imageUrl": "https://raw.githubusercontent.com/Gizmo091/jellyfin-plugin-letterboxd-sync/master/images/letterboxd-sync.png",
     "versions": [
       {
+        "version": "1.8.4.0",
+        "changelog": "- fix: remove 'username' from watchlist labels to prevent password manager detection (007ddb3)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Gizmo091/jellyfin-plugin-letterboxd-sync/releases/download/v1.8.4/jellyfin-plugin-letterboxd-sync-v1.8.4.zip",
+        "checksum": "f253bb7d4314d56324b60180a2d60b00",
+        "timestamp": "2026-02-10T22:35:47Z"
+      },
+      {
         "version": "1.8.3.0",
         "changelog": "- fix: rename credential fields to avoid password manager auto-fill (b20f71a)",
         "targetAbi": "10.11.0.0",
