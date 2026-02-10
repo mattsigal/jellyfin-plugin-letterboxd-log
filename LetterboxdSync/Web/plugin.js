@@ -272,13 +272,23 @@
             }
 
             var data = JSON.stringify(configUser);
+            var submitBtn = view.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.querySelector('span').textContent = 'Saving...';
+
+            function onDone() {
+                submitBtn.disabled = false;
+                submitBtn.querySelector('span').textContent = 'Save';
+            }
 
             function saveConfig() {
                 var saveUrl = ApiClient.getUrl('Jellyfin.Plugin.LetterboxdSync/UserConfig');
                 ApiClient.ajax({ type: 'POST', url: saveUrl, data: data, contentType: 'application/json' }).then(function () {
+                    onDone();
                     Dashboard.alert('Settings saved.');
                     closeDialog();
                 }).catch(function () {
+                    onDone();
                     Dashboard.alert('Error saving settings.');
                 });
             }
@@ -286,10 +296,13 @@
             if (!configUser.Enable) {
                 saveConfig();
             } else {
+                submitBtn.querySelector('span').textContent = 'Authenticating...';
                 var authUrl = ApiClient.getUrl('Jellyfin.Plugin.LetterboxdSync/UserAuthenticate');
                 ApiClient.ajax({ type: 'POST', url: authUrl, data: data, contentType: 'application/json' }).then(function () {
+                    submitBtn.querySelector('span').textContent = 'Saving...';
                     saveConfig();
                 }).catch(function (response) {
+                    onDone();
                     if (response && response.json) {
                         response.json().then(function (res) {
                             Dashboard.alert('Authentication failed: ' + res.Message);
