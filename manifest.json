@@ -23,6 +23,14 @@
     "imageUrl": "https://raw.githubusercontent.com/Gizmo091/jellyfin-plugin-letterboxd-sync/master/images/letterboxd-sync.png",
     "versions": [
       {
+        "version": "1.6.0.0",
+        "changelog": "- feat: add loading state on save button (65d9955)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Gizmo091/jellyfin-plugin-letterboxd-sync/releases/download/v1.6.0/jellyfin-plugin-letterboxd-sync-v1.6.0.zip",
+        "checksum": "e1394d364261ad3fa58b3607b6436c9f",
+        "timestamp": "2026-02-10T19:54:47Z"
+      },
+      {
         "version": "1.5.3.0",
         "changelog": "- fix: use full Jellyfin checkbox markup with checkboxOutline icons (8310358)",
         "targetAbi": "10.11.0.0",
