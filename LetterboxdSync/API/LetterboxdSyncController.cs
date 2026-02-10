@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Net.Mime;
 using System.Threading.Tasks;
@@ -15,6 +16,21 @@ namespace LetterboxdSync.API;
 public class LetterboxdSyncController : ControllerBase
 {
     private static readonly object _configLock = new();
+
+    [HttpGet("Jellyfin.Plugin.LetterboxdSync/ClientScript")]
+    [AllowAnonymous]
+    [Produces("application/javascript")]
+    public ActionResult GetClientScript()
+    {
+        var resourceName = $"{typeof(Plugin).Namespace}.Web.plugin.js";
+        var stream = typeof(Plugin).Assembly.GetManifestResourceStream(resourceName);
+        if (stream == null)
+        {
+            return NotFound();
+        }
+
+        return File(stream, "application/javascript");
+    }
 
     [HttpPost("Jellyfin.Plugin.LetterboxdSync/Authenticate")]
     [ProducesResponseType(StatusCodes.Status200OK)]

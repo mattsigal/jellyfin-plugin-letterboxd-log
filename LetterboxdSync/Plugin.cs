@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 using LetterboxdSync.Configuration;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
@@ -14,6 +16,8 @@ namespace LetterboxdSync;
 /// </summary>
 public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 {
+    private readonly IApplicationPaths _applicationPaths;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="Plugin"/> class.
     /// </summary>
@@ -23,6 +27,8 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         : base(applicationPaths, xmlSerializer)
     {
         Instance = this;
+        _applicationPaths = applicationPaths;
+        InjectClientScript();
     }
 
     /// <inheritdoc />
@@ -64,5 +70,46 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
                 EmbeddedResourcePath = $"{GetType().Namespace}.Web.userConfigLetterboxd.js"
             }
         };
+    }
+
+    private void InjectClientScript()
+    {
+        try
+        {
+            RegisterWithFileTransformation();
+        }
+        catch
+        {
+            // FileTransformation not available, fall back to direct HTML modification
+            try
+            {
+                IndexHtmlTransformer.InjectIntoFile(_applicationPaths.WebPath);
+            }
+            catch
+            {
+                // Unable to inject script - sidebar menu won't be available
+            }
+        }
+    }
+
+    private void RegisterWithFileTransformation()
+    {
+        var payload = new
+        {
+            id = Id,
+            fileNamePattern = "index.html",
+            callbackAssembly = "LetterboxdSync",
+            callbackClass = "LetterboxdSync.IndexHtmlTransformer",
+            callbackMethod = "TransformIndexHtml"
+        };
+
+        var json = JsonSerializer.Serialize(payload);
+
+        using var client = new HttpClient();
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        var response = client.PostAsync(
+            "http://localhost:8096/FileTransformation/RegisterTransformation",
+            content).Result;
+        response.EnsureSuccessStatusCode();
     }
 }
