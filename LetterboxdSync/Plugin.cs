@@ -8,7 +8,6 @@ using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
-using Microsoft.Extensions.Logging;
 
 namespace LetterboxdSync;
 
@@ -17,8 +16,6 @@ namespace LetterboxdSync;
 /// </summary>
 public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 {
-    private readonly IApplicationPaths _applicationPaths;
-
     /// <summary>
     /// Initializes a new instance of the <see cref="Plugin"/> class.
     /// </summary>
@@ -28,7 +25,6 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         : base(applicationPaths, xmlSerializer)
     {
         Instance = this;
-        _applicationPaths = applicationPaths;
         InjectClientScript();
     }
 
@@ -82,18 +78,8 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[LetterboxdSync] FileTransformation not available: {ex.Message}");
-            // FileTransformation not available, fall back to direct HTML modification
-            try
-            {
-                Console.WriteLine($"[LetterboxdSync] Attempting direct injection into {_applicationPaths.WebPath}");
-                IndexHtmlTransformer.InjectIntoFile(_applicationPaths.WebPath);
-                Console.WriteLine("[LetterboxdSync] Direct HTML injection succeeded");
-            }
-            catch (Exception ex2)
-            {
-                Console.WriteLine($"[LetterboxdSync] Direct HTML injection failed: {ex2.Message}");
-            }
+            Console.WriteLine($"[LetterboxdSync] FileTransformation plugin is not installed. The Letterboxd sidebar menu will not be available for non-admin users. Install FileTransformation from: https://github.com/danieladov/jellyfin-plugin-file-transformation");
+            Console.WriteLine($"[LetterboxdSync] FileTransformation error: {ex.Message}");
         }
     }
 

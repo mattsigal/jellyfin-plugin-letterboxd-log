@@ -17,6 +17,11 @@
 
 This plugin sends daily updates to the Letterboxd diary informing the films watched on Jellyfin. Since the Letterboxd API is not publicly available, this project uses the HtmlAgilityPack package to interact directly with the website's interface.
 
+## Requirements
+
+- **Jellyfin 10.11+**
+- **[File Transformation](https://github.com/danieladov/jellyfin-plugin-file-transformation)** plugin — Required to inject the Letterboxd sidebar menu for all users (including non-admins). Without it, admin configuration still works but non-admin users won't see the Letterboxd entry in the sidebar.
+
 ## Installation
 
 1. Open the dashboard in Jellyfin, then select `Catalog` and open `Settings` at the top with the `⚙️` button.

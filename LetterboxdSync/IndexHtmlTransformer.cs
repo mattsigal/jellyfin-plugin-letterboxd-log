@@ -37,23 +37,4 @@ public static class IndexHtmlTransformer
             await writer.FlushAsync().ConfigureAwait(false);
         }
     }
-
-    public static void InjectIntoFile(string webPath)
-    {
-        var indexPath = Path.Combine(webPath, "index.html");
-        if (!File.Exists(indexPath))
-        {
-            return;
-        }
-
-        var html = File.ReadAllText(indexPath, Encoding.UTF8);
-
-        if (html.Contains("plugin=\"LetterboxdSync\""))
-        {
-            return;
-        }
-
-        html = html.Replace("</body>", $"{ScriptTag}\n</body>");
-        File.WriteAllText(indexPath, html, Encoding.UTF8);
-    }
 }
