@@ -23,6 +23,14 @@
     "imageUrl": "https://raw.githubusercontent.com/hrqmonteiro/jellyfin-plugin-letterboxd-sync/master/images/letterboxd-sync.png",
     "versions": [
       {
+        "version": "1.2.0.0",
+        "changelog": "- chore(release): v1.2.1 (4a38cca)\n- fix: order of sync task on tmdb 403 error; detailed logs (b44a4db)\n- chore(release): v1.2.0 (5302dbd)\n- feat: fixing csrf and cloudflare login error; adding raw cookies section on plugin settings to bypass it (5a36a5e)\n- chore: edit README.md, workflow and added images (0f9c3aa)\n- chore(release): v1.1.11 (133dd2f)\n- chore: edit manifest.json (5a7a02e)\n- chore(release): v1.1.10 (b108c84)\n- fix: run sync task with cookiesraw before authenticate if exists (f5a8da9)\n- chore: change README.md (ae90ddb)\n- chore(release): v1.1.9 (35cf1d4)\n- chore: fix csrf and cloudflare error; add cookies input on settings (148e3e6)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Gizmo091/jellyfin-plugin-letterboxd-sync/releases/download/v1.2.0/jellyfin-plugin-letterboxd-sync-v1.2.0.zip",
+        "checksum": "e505b7d8eae0595c87b53b8f8b979245",
+        "timestamp": "2026-02-10T14:51:28Z"
+      },
+      {
         "version": "1.2.1.0",
         "changelog": "- fix: order of sync task on tmdb 403 error; detailed logs (b44a4db)\n- chore: edit README.md, workflow and added images (0f9c3aa)\n- chore(release): v1.1.11 (133dd2f)\n- chore: edit manifest.json (5a7a02e)\n- chore(release): v1.1.10 (b108c84)\n- fix: run sync task with cookiesraw before authenticate if exists (f5a8da9)\n- chore: change README.md (ae90ddb)\n- chore(release): v1.1.9 (35cf1d4)\n- chore: fix csrf and cloudflare error; add cookies input on settings (148e3e6)",
         "targetAbi": "10.11.0.0",
