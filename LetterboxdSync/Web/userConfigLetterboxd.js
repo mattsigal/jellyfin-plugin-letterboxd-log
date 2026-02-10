@@ -12,7 +12,7 @@ export default function (view, params) {
         input.setAttribute('is', 'emby-input');
         input.type = 'text';
         input.className = 'watchlist-entry';
-        input.setAttribute('label', 'Watchlist link or username');
+        input.setAttribute('label', 'Watchlist link or Letterboxd profile');
         input.setAttribute('autocomplete', 'off');
         input.value = value || '';
         input.style.flex = '1';

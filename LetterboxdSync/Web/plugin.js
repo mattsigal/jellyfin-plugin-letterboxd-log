@@ -21,8 +21,8 @@
             enableDateFilterDesc: 'Only sync movies played within the specified number of days',
             daysToLookBack: 'Days to look back',
             watchlistSync: 'Watchlist Sync',
-            watchlistDesc: 'Paste a watchlist link (letterboxd.com or boxd.it short link) or a Letterboxd username to sync their public watchlist as a playlist.',
-            watchlistPlaceholder: 'watchlist link or Letterboxd username',
+            watchlistDesc: 'Paste a watchlist link (letterboxd.com or boxd.it short link) or a Letterboxd profile name to sync their public watchlist as a playlist.',
+            watchlistPlaceholder: 'watchlist link or Letterboxd profile',
             addWatchlist: 'Add Watchlist',
             remove: 'Remove',
             save: 'Save',
@@ -582,7 +582,7 @@
         var input = document.createElement('input');
         input.type = 'text';
         input.className = 'emby-input watchlist-entry';
-        input.placeholder = t.watchlistPlaceholder || 'watchlist link or username';
+        input.placeholder = t.watchlistPlaceholder || 'watchlist link or Letterboxd profile';
         input.setAttribute('autocomplete', 'off');
         input.value = value || '';
         input.style.flex = '1';
