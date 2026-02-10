@@ -511,17 +511,17 @@ public class LetterboxdApi
                 using (var response = await client.SendAsync(request).ConfigureAwait(false))
                 {
                     var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                    if (body.Length > 300) body = body.Substring(0, 300);
+                    var bodyPreview = body.Length > 300 ? body.Substring(0, 300) : body;
                     if (response.StatusCode == HttpStatusCode.Forbidden)
                     {
                         throw new Exception(
                             "Letterboxd returned 403 during diary submission. This is likely reCAPTCHA/anti-bot enforcement. " +
-                            "Body: " + body
+                            "Body: " + bodyPreview
                         );
                     }
                     if (response.StatusCode != HttpStatusCode.OK)
                     {
-                        throw new Exception($"Letterboxd returned {(int)response.StatusCode}. Body: " + body);
+                        throw new Exception($"Letterboxd returned {(int)response.StatusCode}. Body: " + bodyPreview);
                     }
 
                     using (JsonDocument doc = JsonDocument.Parse(body))
