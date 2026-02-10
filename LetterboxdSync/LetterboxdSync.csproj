@@ -24,11 +24,15 @@
   <ItemGroup>
     <None Remove="Web\configLetterboxd.html" />
     <None Remove="Web\configLetterboxd.js" />
+    <None Remove="Web\userConfigLetterboxd.html" />
+    <None Remove="Web\userConfigLetterboxd.js" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="Web\configLetterboxd.html" />
     <EmbeddedResource Include="Web\configLetterboxd.js" />
+    <EmbeddedResource Include="Web\userConfigLetterboxd.html" />
+    <EmbeddedResource Include="Web\userConfigLetterboxd.js" />
   </ItemGroup>
 
 </Project>

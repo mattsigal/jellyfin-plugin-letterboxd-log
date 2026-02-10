@@ -627,6 +627,82 @@ public class LetterboxdApi
         return false;
     }
 
+    public async Task<List<FilmResult>> GetFilmsFromWatchlist(string username, int pageNum)
+    {
+        var films = new List<FilmResult>();
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/{username}/watchlist/page/{pageNum}/");
+        SetNavigationHeaders(request.Headers);
+
+        using var response = await client.SendAsync(request).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+
+        var html = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        var htmlDoc = new HtmlDocument();
+        htmlDoc.LoadHtml(html);
+
+        var posters = htmlDoc.DocumentNode.SelectNodes("//div[@data-component-class='LazyPoster']");
+
+        if (posters == null)
+        {
+            return films;
+        }
+
+        foreach (var poster in posters)
+        {
+            var filmSlug = poster.GetAttributeValue("data-item-slug", string.Empty);
+            if (string.IsNullOrEmpty(filmSlug))
+            {
+                continue;
+            }
+
+            var film = await GetFilmTmdbIdFromSlug(filmSlug).ConfigureAwait(false);
+            if (film != null)
+            {
+                films.Add(film);
+            }
+
+            await Task.Delay(2000 + Random.Shared.Next(1000)).ConfigureAwait(false);
+        }
+
+        bool isNextPage = htmlDoc.DocumentNode.SelectNodes($"//li[a/text() = '{pageNum + 1}']") is not null;
+
+        if (isNextPage)
+        {
+            var nextPageFilms = await GetFilmsFromWatchlist(username, pageNum + 1).ConfigureAwait(false);
+            films.AddRange(nextPageFilms);
+        }
+
+        return films;
+    }
+
+    public async Task<FilmResult?> GetFilmTmdbIdFromSlug(string filmSlug)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/film/{filmSlug}/");
+        SetNavigationHeaders(request.Headers);
+
+        using var response = await client.SendAsync(request).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+
+        var html = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        var htmlDoc = new HtmlDocument();
+        htmlDoc.LoadHtml(html);
+
+        var body = htmlDoc.DocumentNode.SelectSingleNode("//body");
+        if (body == null)
+        {
+            return null;
+        }
+
+        string filmId = body.GetAttributeValue("data-tmdb-id", string.Empty);
+        if (string.IsNullOrEmpty(filmId))
+        {
+            return null;
+        }
+
+        return new FilmResult(filmSlug, filmId);
+    }
+
     private static string? ExtractHiddenInput(string html, string name)
     {
         // Matches: <input type="hidden" name="__csrf" value="...">
