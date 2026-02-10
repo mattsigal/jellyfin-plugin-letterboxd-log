@@ -23,6 +23,14 @@
     "imageUrl": "https://raw.githubusercontent.com/Gizmo091/jellyfin-plugin-letterboxd-sync/master/images/letterboxd-sync.png",
     "versions": [
       {
+        "version": "1.5.2.0",
+        "changelog": "- fix: use native checkboxes in dialog instead of emby-checkbox (f9dbd65)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Gizmo091/jellyfin-plugin-letterboxd-sync/releases/download/v1.5.2/jellyfin-plugin-letterboxd-sync-v1.5.2.zip",
+        "checksum": "4141e5a401293ab5cdb72b74c2e061eb",
+        "timestamp": "2026-02-10T19:49:34Z"
+      },
+      {
         "version": "1.5.1.0",
         "changelog": "- fix: close sidebar drawer before opening dialog (947132a)",
         "targetAbi": "10.11.0.0",
