@@ -8,6 +8,7 @@ using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
+using Microsoft.Extensions.Logging;
 
 namespace LetterboxdSync;
 
@@ -77,17 +78,21 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         try
         {
             RegisterWithFileTransformation();
+            Console.WriteLine("[LetterboxdSync] Registered with FileTransformation");
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine($"[LetterboxdSync] FileTransformation not available: {ex.Message}");
             // FileTransformation not available, fall back to direct HTML modification
             try
             {
+                Console.WriteLine($"[LetterboxdSync] Attempting direct injection into {_applicationPaths.WebPath}");
                 IndexHtmlTransformer.InjectIntoFile(_applicationPaths.WebPath);
+                Console.WriteLine("[LetterboxdSync] Direct HTML injection succeeded");
             }
-            catch
+            catch (Exception ex2)
             {
-                // Unable to inject script - sidebar menu won't be available
+                Console.WriteLine($"[LetterboxdSync] Direct HTML injection failed: {ex2.Message}");
             }
         }
     }

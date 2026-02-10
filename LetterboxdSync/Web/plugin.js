@@ -14,11 +14,6 @@
             return;
         }
 
-        var adminSection = scrollContainer.querySelector('.adminMenuOptions');
-        if (!adminSection) {
-            return;
-        }
-
         var section = document.createElement('div');
         section.id = MENU_ID;
         section.className = 'navMenuSection';
@@ -36,7 +31,13 @@
             '<span class="navMenuOptionText">Letterboxd Sync</span>';
         section.appendChild(link);
 
-        adminSection.parentNode.insertBefore(section, adminSection);
+        // Insert before admin section if present, otherwise append at end of sidebar
+        var adminSection = scrollContainer.querySelector('.adminMenuOptions');
+        if (adminSection) {
+            adminSection.parentNode.insertBefore(section, adminSection);
+        } else {
+            scrollContainer.appendChild(section);
+        }
     }
 
     var observer = new MutationObserver(function () {
