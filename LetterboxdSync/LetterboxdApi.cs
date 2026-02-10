@@ -628,17 +628,23 @@ public class LetterboxdApi
     }
 
     /// <summary>
-    /// Resolves a watchlist input (short URL, full URL, or plain username) to a Letterboxd username.
-    /// Supports: "username", "https://boxd.it/QKjHO", "https://letterboxd.com/user/watchlist/", "letterboxd.com/user".
+    /// Resolved target for a watchlist/list input.
     /// </summary>
-    public static async Task<string> ResolveWatchlistInput(string input)
+    public record WatchlistTarget(string PlaylistName, string BasePath);
+
+    /// <summary>
+    /// Resolves a watchlist input (short URL, full URL, or plain username) to a scraping target.
+    /// Supports: "username", "https://boxd.it/QKjHO", "https://letterboxd.com/user/watchlist/",
+    /// "https://letterboxd.com/user/list/list-slug/", "letterboxd.com/user".
+    /// </summary>
+    public static async Task<WatchlistTarget> ResolveWatchlistInput(string input)
     {
         input = input.Trim();
 
         // Plain username — no dots or slashes
         if (!input.Contains('/') && !input.Contains('.'))
         {
-            return input;
+            return new WatchlistTarget($"{input}'s Watchlist", $"/{input}/watchlist");
         }
 
         // Normalize missing scheme
@@ -649,38 +655,55 @@ public class LetterboxdApi
 
         if (!Uri.TryCreate(input, UriKind.Absolute, out var uri))
         {
-            return input;
+            return new WatchlistTarget($"{input}'s Watchlist", $"/{input}/watchlist");
         }
 
-        // Short URL (boxd.it) — follow redirect to get the real Letterboxd URL
+        // Short URL (boxd.it) — read Location header without following redirect (avoids Cloudflare)
         if (uri.Host.Equals("boxd.it", StringComparison.OrdinalIgnoreCase))
         {
-            using var redirectHandler = new HttpClientHandler { AllowAutoRedirect = true };
+            using var redirectHandler = new HttpClientHandler { AllowAutoRedirect = false };
             using var httpClient = new HttpClient(redirectHandler);
             httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0");
             using var response = await httpClient.GetAsync(uri).ConfigureAwait(false);
-            uri = response.RequestMessage?.RequestUri ?? uri;
-        }
-
-        // Extract username from letterboxd.com URL (first path segment)
-        if (uri.Host.Contains("letterboxd.com", StringComparison.OrdinalIgnoreCase))
-        {
-            var segments = uri.AbsolutePath.Trim('/').Split('/');
-            if (segments.Length > 0 && !string.IsNullOrEmpty(segments[0]))
+            var location = response.Headers.Location;
+            if (location != null)
             {
-                return segments[0];
+                uri = location.IsAbsoluteUri ? location : new Uri(uri, location);
             }
         }
 
-        return input;
+        // Extract path info from letterboxd.com URL
+        if (uri.Host.Contains("letterboxd.com", StringComparison.OrdinalIgnoreCase))
+        {
+            var segments = uri.AbsolutePath.Trim('/').Split('/');
+
+            // List URL: /username/list/list-slug/
+            if (segments.Length >= 3 && segments[1] == "list")
+            {
+                var username = segments[0];
+                var listSlug = segments[2];
+                return new WatchlistTarget(
+                    $"{username} - {listSlug}",
+                    $"/{username}/list/{listSlug}");
+            }
+
+            // Watchlist or profile URL: /username/ or /username/watchlist/
+            if (segments.Length > 0 && !string.IsNullOrEmpty(segments[0]))
+            {
+                var username = segments[0];
+                return new WatchlistTarget($"{username}'s Watchlist", $"/{username}/watchlist");
+            }
+        }
+
+        return new WatchlistTarget($"{input}'s Watchlist", $"/{input}/watchlist");
     }
 
-    public async Task<List<FilmResult>> GetFilmsFromWatchlist(string username, int pageNum)
+    public async Task<List<FilmResult>> GetFilmsFromList(string basePath, int pageNum)
     {
         var films = new List<FilmResult>();
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"/{username}/watchlist/page/{pageNum}/");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"{basePath}/page/{pageNum}/");
         SetNavigationHeaders(request.Headers);
 
         using var response = await client.SendAsync(request).ConfigureAwait(false);
@@ -718,7 +741,7 @@ public class LetterboxdApi
 
         if (isNextPage)
         {
-            var nextPageFilms = await GetFilmsFromWatchlist(username, pageNum + 1).ConfigureAwait(false);
+            var nextPageFilms = await GetFilmsFromList(basePath, pageNum + 1).ConfigureAwait(false);
             films.AddRange(nextPageFilms);
         }
 
