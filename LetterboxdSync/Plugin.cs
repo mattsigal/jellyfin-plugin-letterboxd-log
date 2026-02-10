@@ -47,7 +47,9 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             new PluginPageInfo
             {
                 Name = "configLetterboxd",
-                EmbeddedResourcePath = $"{GetType().Namespace}.Web.configLetterboxd.html"
+                EmbeddedResourcePath = $"{GetType().Namespace}.Web.configLetterboxd.html",
+                EnableInMainMenu = true,
+                DisplayName = "Letterboxd Sync",
             },
             new PluginPageInfo
             {
@@ -58,8 +60,6 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             {
                 Name = "userConfigLetterboxd",
                 EmbeddedResourcePath = $"{GetType().Namespace}.Web.userConfigLetterboxd.html",
-                EnableInMainMenu = true,
-                DisplayName = "Letterboxd Sync",
             },
             new PluginPageInfo
             {
