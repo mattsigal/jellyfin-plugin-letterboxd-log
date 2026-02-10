@@ -23,6 +23,14 @@
     "imageUrl": "https://raw.githubusercontent.com/Gizmo091/jellyfin-plugin-letterboxd-sync/master/images/letterboxd-sync.png",
     "versions": [
       {
+        "version": "1.5.3.0",
+        "changelog": "- fix: use full Jellyfin checkbox markup with checkboxOutline icons (8310358)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Gizmo091/jellyfin-plugin-letterboxd-sync/releases/download/v1.5.3/jellyfin-plugin-letterboxd-sync-v1.5.3.zip",
+        "checksum": "af6f9ce34498ccf4a4f6466977579b96",
+        "timestamp": "2026-02-10T19:51:17Z"
+      },
+      {
         "version": "1.5.2.0",
         "changelog": "- fix: use native checkboxes in dialog instead of emby-checkbox (f9dbd65)",
         "targetAbi": "10.11.0.0",
