@@ -11,8 +11,9 @@ export default function (view, params) {
         var input = document.createElement('input');
         input.setAttribute('is', 'emby-input');
         input.type = 'text';
-        input.className = 'watchlist-username';
-        input.setAttribute('label', 'Letterboxd Username');
+        input.className = 'watchlist-entry';
+        input.setAttribute('label', 'Watchlist link or username');
+        input.setAttribute('autocomplete', 'off');
         input.value = value || '';
         input.style.flex = '1';
 
@@ -72,7 +73,7 @@ export default function (view, params) {
         configUser.EnableDateFilter = view.querySelector('#enabledatefilter').checked;
         configUser.DateFilterDays = parseInt(view.querySelector('#datefilterdays').value) || 7;
 
-        var watchlistInputs = view.querySelectorAll('.watchlist-username');
+        var watchlistInputs = view.querySelectorAll('.watchlist-entry');
         var watchlistUsernames = [];
         for (var i = 0; i < watchlistInputs.length; i++) {
             var val = watchlistInputs[i].value.trim();

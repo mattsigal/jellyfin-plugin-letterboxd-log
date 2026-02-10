@@ -7,10 +7,10 @@
 
                     <h3>Letterboxd Login</h3>
                     <div class="inputContainer">
-                        <input is="emby-input" type="text" id="username" label="${LabelUsername} Letterboxd" />
+                        <input is="emby-input" type="text" id="username" label="${LabelUsername} Letterboxd" autocomplete="off" />
                     </div>
                     <div class="inputContainer">
-                        <input is="emby-input" type="password" id="password" label="${LabelPassword} Letterboxd" />
+                        <input is="emby-input" type="password" id="password" label="${LabelPassword} Letterboxd" autocomplete="new-password" />
                     </div>
                     <div class="inputContainer">
                         <input is="emby-input" type="hidden" label="Raw Cookies" />
@@ -49,7 +49,7 @@
                     </div>
 
                     <h3>Watchlist Sync</h3>
-                    <div class="fieldDescription">Add Letterboxd usernames whose public watchlists you want to sync as Jellyfin playlists. No login required.</div>
+                    <div class="fieldDescription">Paste a watchlist link (letterboxd.com or boxd.it short link) or a Letterboxd username to sync their public watchlist as a playlist. No login required.</div>
                     <div id="watchlistContainer"></div>
                     <div>
                         <button id="addWatchlistBtn" is="emby-button" type="button" class="raised">

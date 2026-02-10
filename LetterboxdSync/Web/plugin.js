@@ -21,8 +21,8 @@
             enableDateFilterDesc: 'Only sync movies played within the specified number of days',
             daysToLookBack: 'Days to look back',
             watchlistSync: 'Watchlist Sync',
-            watchlistDesc: 'Add Letterboxd usernames or watchlist URLs (including boxd.it short links) to sync as playlists.',
-            watchlistPlaceholder: 'username or boxd.it link',
+            watchlistDesc: 'Paste a watchlist link (letterboxd.com or boxd.it short link) or a Letterboxd username to sync their public watchlist as a playlist.',
+            watchlistPlaceholder: 'watchlist link or Letterboxd username',
             addWatchlist: 'Add Watchlist',
             remove: 'Remove',
             save: 'Save',
@@ -47,8 +47,8 @@
             enableDateFilterDesc: 'Ne synchroniser que les films vus dans le nombre de jours sp\u00e9cifi\u00e9',
             daysToLookBack: 'Nombre de jours',
             watchlistSync: 'Synchronisation des watchlists',
-            watchlistDesc: 'Ajoutez des noms d\'utilisateurs Letterboxd ou des URLs de watchlist (y compris les liens courts boxd.it) \u00e0 synchroniser en playlists.',
-            watchlistPlaceholder: 'nom d\'utilisateur ou lien boxd.it',
+            watchlistDesc: 'Collez un lien de watchlist (letterboxd.com ou lien court boxd.it) ou un nom d\'utilisateur Letterboxd pour synchroniser sa watchlist publique en playlist.',
+            watchlistPlaceholder: 'lien de watchlist ou nom d\'utilisateur',
             addWatchlist: 'Ajouter une watchlist',
             remove: 'Supprimer',
             save: 'Enregistrer',
@@ -73,8 +73,8 @@
             enableDateFilterDesc: 'Nur Filme synchronisieren, die innerhalb der angegebenen Tage gesehen wurden',
             daysToLookBack: 'Anzahl der Tage',
             watchlistSync: 'Watchlist-Synchronisierung',
-            watchlistDesc: 'F\u00fcgen Sie Letterboxd-Benutzernamen oder Watchlist-URLs (einschlie\u00dflich boxd.it-Kurzlinks) hinzu, um sie als Playlists zu synchronisieren.',
-            watchlistPlaceholder: 'Benutzername oder boxd.it-Link',
+            watchlistDesc: 'F\u00fcgen Sie einen Watchlist-Link (letterboxd.com oder boxd.it-Kurzlink) oder einen Letterboxd-Benutzernamen ein, um die \u00f6ffentliche Watchlist als Playlist zu synchronisieren.',
+            watchlistPlaceholder: 'Watchlist-Link oder Benutzername',
             addWatchlist: 'Watchlist hinzuf\u00fcgen',
             remove: 'Entfernen',
             save: 'Speichern',
@@ -99,8 +99,8 @@
             enableDateFilterDesc: 'Solo sincronizar pel\u00edculas vistas en el n\u00famero de d\u00edas especificado',
             daysToLookBack: 'D\u00edas a retroceder',
             watchlistSync: 'Sincronizaci\u00f3n de watchlists',
-            watchlistDesc: 'A\u00f1ada usuarios de Letterboxd o URLs de watchlist (incluidos enlaces cortos boxd.it) para sincronizar como listas de reproducci\u00f3n.',
-            watchlistPlaceholder: 'usuario o enlace boxd.it',
+            watchlistDesc: 'Pegue un enlace de watchlist (letterboxd.com o enlace corto boxd.it) o un nombre de usuario de Letterboxd para sincronizar su watchlist p\u00fablica como lista de reproducci\u00f3n.',
+            watchlistPlaceholder: 'enlace de watchlist o nombre de usuario',
             addWatchlist: 'A\u00f1adir watchlist',
             remove: 'Eliminar',
             save: 'Guardar',
@@ -468,11 +468,11 @@
             '  <h3 style="margin-top:0;">' + t.login + '</h3>',
             '  <div class="inputContainer">',
             '    <label class="inputLabel" for="lbxd-username">' + t.username + '</label>',
-            '    <input type="text" id="lbxd-username" class="emby-input" />',
+            '    <input type="text" id="lbxd-username" class="emby-input" autocomplete="off" />',
             '  </div>',
             '  <div class="inputContainer">',
             '    <label class="inputLabel" for="lbxd-password">' + t.password + '</label>',
-            '    <input type="password" id="lbxd-password" class="emby-input" />',
+            '    <input type="password" id="lbxd-password" class="emby-input" autocomplete="new-password" />',
             '  </div>',
             '  <div class="inputContainer">',
             '    <label class="inputLabel" for="lbxd-cookies">' + t.rawCookies + '</label>',
@@ -581,8 +581,9 @@
 
         var input = document.createElement('input');
         input.type = 'text';
-        input.className = 'emby-input watchlist-username';
-        input.placeholder = t.watchlistPlaceholder || 'username or boxd.it link';
+        input.className = 'emby-input watchlist-entry';
+        input.placeholder = t.watchlistPlaceholder || 'watchlist link or username';
+        input.setAttribute('autocomplete', 'off');
         input.value = value || '';
         input.style.flex = '1';
 
@@ -619,7 +620,7 @@
                 WatchlistUsernames: []
             };
 
-            var inputs = view.querySelectorAll('.watchlist-username');
+            var inputs = view.querySelectorAll('.watchlist-entry');
             for (var i = 0; i < inputs.length; i++) {
                 var val = inputs[i].value.trim();
                 if (val) {
