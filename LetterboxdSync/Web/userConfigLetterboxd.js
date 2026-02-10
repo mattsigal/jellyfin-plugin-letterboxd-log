@@ -37,8 +37,8 @@ export default function (view, params) {
 
         var url = ApiClient.getUrl('Jellyfin.Plugin.LetterboxdSync/UserConfig');
         ApiClient.ajax({ type: 'GET', url: url, dataType: 'json' }).then(function (account) {
-            view.querySelector('#username').value = account.UserLetterboxd || '';
-            view.querySelector('#password').value = account.PasswordLetterboxd || '';
+            view.querySelector('#lbxd-account').value = account.UserLetterboxd || '';
+            view.querySelector('#lbxd-key').value = account.PasswordLetterboxd || '';
             view.querySelector('#cookiesraw').value = account.CookiesRaw || '';
             view.querySelector('#enable').checked = account.Enable || false;
             view.querySelector('#sendfavorite').checked = account.SendFavorite || false;
@@ -65,8 +65,8 @@ export default function (view, params) {
         Dashboard.showLoadingMsg();
 
         var configUser = {};
-        configUser.UserLetterboxd = view.querySelector('#username').value;
-        configUser.PasswordLetterboxd = view.querySelector('#password').value;
+        configUser.UserLetterboxd = view.querySelector('#lbxd-account').value;
+        configUser.PasswordLetterboxd = view.querySelector('#lbxd-key').value;
         configUser.CookiesRaw = view.querySelector('#cookiesraw').value;
         configUser.Enable = view.querySelector('#enable').checked;
         configUser.SendFavorite = view.querySelector('#sendfavorite').checked;

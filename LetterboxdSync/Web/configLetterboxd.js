@@ -73,8 +73,8 @@ export default function (view, params) {
                     return item.UserJellyfin == userSelectedId;
                 });
                 if (configUserFilter.length > 0) {
-                    view.querySelector('#username').value = configUserFilter[0].UserLetterboxd;
-                    view.querySelector('#password').value = configUserFilter[0].PasswordLetterboxd;
+                    view.querySelector('#lbxd-account').value = configUserFilter[0].UserLetterboxd;
+                    view.querySelector('#lbxd-key').value = configUserFilter[0].PasswordLetterboxd;
                     view.querySelector('#cookiesraw').value = configUserFilter[0].CookiesRaw || '';
                     view.querySelector('#enable').checked = configUserFilter[0].Enable;
                     view.querySelector('#sendfavorite').checked = configUserFilter[0].SendFavorite;
@@ -105,8 +105,8 @@ export default function (view, params) {
             });
 
             if (configUserFilter.length > 0) {
-                view.querySelector('#username').value = configUserFilter[0].UserLetterboxd;
-                view.querySelector('#password').value = configUserFilter[0].PasswordLetterboxd;
+                view.querySelector('#lbxd-account').value = configUserFilter[0].UserLetterboxd;
+                view.querySelector('#lbxd-key').value = configUserFilter[0].PasswordLetterboxd;
                 view.querySelector('#cookiesraw').value = configUserFilter[0].CookiesRaw || '';
                 view.querySelector('#enable').checked = configUserFilter[0].Enable;
                 view.querySelector('#sendfavorite').checked = configUserFilter[0].SendFavorite;
@@ -115,8 +115,8 @@ export default function (view, params) {
                 loadWatchlistForUser(configUserFilter[0]);
             }
             else {
-                view.querySelector('#username').value = '';
-                view.querySelector('#password').value = '';
+                view.querySelector('#lbxd-account').value = '';
+                view.querySelector('#lbxd-key').value = '';
                 view.querySelector('#cookiesraw').value = '';
                 view.querySelector('#enable').checked = false;
                 view.querySelector('#sendfavorite').checked = false;
@@ -146,8 +146,8 @@ export default function (view, params) {
 
             let configUser = {};
             configUser.UserJellyfin = userSelectedId;
-            configUser.UserLetterboxd = view.querySelector('#username').value;
-            configUser.PasswordLetterboxd = view.querySelector('#password').value;
+            configUser.UserLetterboxd = view.querySelector('#lbxd-account').value;
+            configUser.PasswordLetterboxd = view.querySelector('#lbxd-key').value;
             configUser.CookiesRaw = view.querySelector('#cookiesraw').value;
             configUser.Enable = view.querySelector('#enable').checked;
             configUser.SendFavorite = view.querySelector('#sendfavorite').checked;

@@ -467,12 +467,12 @@
             '<form id="LetterboxdSyncUserConfigForm">',
             '  <h3 style="margin-top:0;">' + t.login + '</h3>',
             '  <div class="inputContainer">',
-            '    <label class="inputLabel" for="lbxd-username">' + t.username + '</label>',
-            '    <input type="text" id="lbxd-username" class="emby-input" autocomplete="off" />',
+            '    <label class="inputLabel" for="lbxd-account">' + t.username + '</label>',
+            '    <input type="text" id="lbxd-account" class="emby-input" autocomplete="off" />',
             '  </div>',
             '  <div class="inputContainer">',
-            '    <label class="inputLabel" for="lbxd-password">' + t.password + '</label>',
-            '    <input type="password" id="lbxd-password" class="emby-input" autocomplete="new-password" />',
+            '    <label class="inputLabel" for="lbxd-key">' + t.password + '</label>',
+            '    <input type="password" id="lbxd-key" class="emby-input" autocomplete="new-password" />',
             '  </div>',
             '  <div class="inputContainer">',
             '    <label class="inputLabel" for="lbxd-cookies">' + t.rawCookies + '</label>',
@@ -558,8 +558,8 @@
             _initialPassword = p;
             _initialCookies = c;
 
-            view.querySelector('#lbxd-username').value = u;
-            view.querySelector('#lbxd-password').value = p;
+            view.querySelector('#lbxd-account').value = u;
+            view.querySelector('#lbxd-key').value = p;
             view.querySelector('#lbxd-cookies').value = c;
             view.querySelector('#lbxd-enable').checked = account.Enable || false;
             view.querySelector('#lbxd-sendfavorite').checked = account.SendFavorite || false;
@@ -610,8 +610,8 @@
             e.preventDefault();
 
             var configUser = {
-                UserLetterboxd: view.querySelector('#lbxd-username').value,
-                PasswordLetterboxd: view.querySelector('#lbxd-password').value,
+                UserLetterboxd: view.querySelector('#lbxd-account').value,
+                PasswordLetterboxd: view.querySelector('#lbxd-key').value,
                 CookiesRaw: view.querySelector('#lbxd-cookies').value,
                 Enable: view.querySelector('#lbxd-enable').checked,
                 SendFavorite: view.querySelector('#lbxd-sendfavorite').checked,
