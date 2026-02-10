@@ -30,9 +30,8 @@
         link.href = '#';
         link.addEventListener('click', function (e) {
             e.preventDefault();
-            e.stopPropagation();
             closeSidebar();
-            setTimeout(openDialog, 200);
+            setTimeout(openDialog, 400);
         });
         link.innerHTML = '<span class="material-icons navMenuOptionIcon" aria-hidden="true">movie_filter</span>' +
             '<span class="navMenuOptionText">Letterboxd Sync</span>';
@@ -47,10 +46,17 @@
     }
 
     function closeSidebar() {
+        var drawer = document.querySelector('.mainDrawer');
+        if (drawer) {
+            drawer.classList.remove('opened');
+            drawer.style.transform = '';
+        }
         var backdrop = document.querySelector('.mainDrawer-backdrop');
         if (backdrop) {
-            backdrop.click();
+            backdrop.classList.remove('opened');
+            backdrop.style.display = 'none';
         }
+        document.body.classList.remove('bodyWithPopupOpen');
     }
 
     // ===== Dialog =====
