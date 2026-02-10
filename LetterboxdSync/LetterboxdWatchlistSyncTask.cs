@@ -78,7 +78,7 @@ public class LetterboxdWatchlistSyncTask : IScheduledTask
 
                 try
                 {
-                    await SyncWatchlistForUser(user.Id, watchlistUsername, cancellationToken).ConfigureAwait(false);
+                    await SyncWatchlistForUser(user.Id, watchlistUsername, account.CookiesRaw, cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -96,7 +96,7 @@ public class LetterboxdWatchlistSyncTask : IScheduledTask
         progress.Report(100);
     }
 
-    private async Task SyncWatchlistForUser(Guid jellyfinUserId, string watchlistInput, CancellationToken cancellationToken)
+    private async Task SyncWatchlistForUser(Guid jellyfinUserId, string watchlistInput, string? cookiesRaw, CancellationToken cancellationToken)
     {
         var letterboxdUsername = await LetterboxdApi.ResolveWatchlistInput(watchlistInput).ConfigureAwait(false);
 
@@ -105,6 +105,10 @@ public class LetterboxdWatchlistSyncTask : IScheduledTask
             letterboxdUsername, watchlistInput, jellyfinUserId.ToString("N"));
 
         var api = new LetterboxdApi();
+        if (!string.IsNullOrWhiteSpace(cookiesRaw))
+        {
+            api.SetRawCookies(cookiesRaw!);
+        }
         var watchlistFilms = await api.GetFilmsFromWatchlist(letterboxdUsername, 1).ConfigureAwait(false);
 
         if (watchlistFilms.Count == 0)
