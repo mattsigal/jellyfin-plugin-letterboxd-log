@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 using LetterboxdSync.Configuration;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
+using Microsoft.Extensions.Logging;
 
 namespace LetterboxdSync;
 
@@ -14,6 +17,8 @@ namespace LetterboxdSync;
 /// </summary>
 public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
 {
+    private readonly IApplicationPaths _applicationPaths;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="Plugin"/> class.
     /// </summary>
@@ -23,6 +28,8 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         : base(applicationPaths, xmlSerializer)
     {
         Instance = this;
+        _applicationPaths = applicationPaths;
+        InjectClientScript();
     }
 
     /// <inheritdoc />
@@ -50,7 +57,64 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             {
                 Name = "configLetterboxdjs",
                 EmbeddedResourcePath = $"{GetType().Namespace}.Web.configLetterboxd.js"
+            },
+            new PluginPageInfo
+            {
+                Name = "userConfigLetterboxd",
+                EmbeddedResourcePath = $"{GetType().Namespace}.Web.userConfigLetterboxd.html",
+                EnableInMainMenu = true,
+                DisplayName = "Letterboxd Sync",
+            },
+            new PluginPageInfo
+            {
+                Name = "userConfigLetterboxdjs",
+                EmbeddedResourcePath = $"{GetType().Namespace}.Web.userConfigLetterboxd.js"
             }
         };
+    }
+
+    private void InjectClientScript()
+    {
+        try
+        {
+            RegisterWithFileTransformation();
+            Console.WriteLine("[LetterboxdSync] Registered with FileTransformation");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[LetterboxdSync] FileTransformation not available: {ex.Message}");
+            // FileTransformation not available, fall back to direct HTML modification
+            try
+            {
+                Console.WriteLine($"[LetterboxdSync] Attempting direct injection into {_applicationPaths.WebPath}");
+                IndexHtmlTransformer.InjectIntoFile(_applicationPaths.WebPath);
+                Console.WriteLine("[LetterboxdSync] Direct HTML injection succeeded");
+            }
+            catch (Exception ex2)
+            {
+                Console.WriteLine($"[LetterboxdSync] Direct HTML injection failed: {ex2.Message}");
+            }
+        }
+    }
+
+    private void RegisterWithFileTransformation()
+    {
+        var payload = new
+        {
+            id = Id,
+            fileNamePattern = "index.html",
+            callbackAssembly = "LetterboxdSync",
+            callbackClass = "LetterboxdSync.IndexHtmlTransformer",
+            callbackMethod = "TransformIndexHtml"
+        };
+
+        var json = JsonSerializer.Serialize(payload);
+
+        using var client = new HttpClient();
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+        var response = client.PostAsync(
+            "http://localhost:8096/FileTransformation/RegisterTransformation",
+            content).Result;
+        response.EnsureSuccessStatusCode();
     }
 }

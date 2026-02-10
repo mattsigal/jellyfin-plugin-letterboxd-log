@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace LetterboxdSync.Configuration;
 
@@ -19,4 +20,6 @@ public class Account
     public bool EnableDateFilter { get; set; }
 
     public int DateFilterDays { get; set; } = 7;
+
+    public List<string> WatchlistUsernames { get; set; } = new List<string>();
 }

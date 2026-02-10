@@ -2,10 +2,11 @@ name: '🚀 Publish'
 
 on:
     push:
-        branches: 
+        branches:
             - main
             - master
             - jf-10.11
+            - feature/letterboxd-watchlist
         paths-ignore:
             - 'README.md'
             - 'images/**'
@@ -90,7 +91,7 @@ jobs:
     publish:
         name: 'publish v${{needs.build.outputs.release-version}}'
         runs-on: ubuntu-latest
-        environment: prd 
+        environment: prd
         needs: build
         steps:
             - uses: actions/checkout@v4
@@ -148,7 +149,7 @@ jobs:
                 tag_name: v${{ needs.build.outputs.release-version }}
                 release_name: v${{ needs.build.outputs.release-version }}
                 draft: false
-                prerelease: false
+                prerelease: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' }}
                 body: ${{needs.build.outputs.changelog}}
               env:
                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

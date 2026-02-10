@@ -511,17 +511,17 @@ public class LetterboxdApi
                 using (var response = await client.SendAsync(request).ConfigureAwait(false))
                 {
                     var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                    if (body.Length > 300) body = body.Substring(0, 300);
+                    var bodyPreview = body.Length > 300 ? body.Substring(0, 300) : body;
                     if (response.StatusCode == HttpStatusCode.Forbidden)
                     {
                         throw new Exception(
                             "Letterboxd returned 403 during diary submission. This is likely reCAPTCHA/anti-bot enforcement. " +
-                            "Body: " + body
+                            "Body: " + bodyPreview
                         );
                     }
                     if (response.StatusCode != HttpStatusCode.OK)
                     {
-                        throw new Exception($"Letterboxd returned {(int)response.StatusCode}. Body: " + body);
+                        throw new Exception($"Letterboxd returned {(int)response.StatusCode}. Body: " + bodyPreview);
                     }
 
                     using (JsonDocument doc = JsonDocument.Parse(body))
@@ -625,6 +625,154 @@ public class LetterboxdApi
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Resolved target for a watchlist/list input.
+    /// </summary>
+    public record WatchlistTarget(string PlaylistName, string BasePath);
+
+    /// <summary>
+    /// Resolves a watchlist input (short URL, full URL, or plain username) to a scraping target.
+    /// Supports: "username", "https://boxd.it/QKjHO", "https://letterboxd.com/user/watchlist/",
+    /// "https://letterboxd.com/user/list/list-slug/", "letterboxd.com/user".
+    /// </summary>
+    public static async Task<WatchlistTarget> ResolveWatchlistInput(string input)
+    {
+        input = input.Trim();
+
+        // Plain username — no dots or slashes
+        if (!input.Contains('/') && !input.Contains('.'))
+        {
+            return new WatchlistTarget($"{input}'s Watchlist", $"/{input}/watchlist");
+        }
+
+        // Normalize missing scheme
+        if (!input.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+        {
+            input = "https://" + input;
+        }
+
+        if (!Uri.TryCreate(input, UriKind.Absolute, out var uri))
+        {
+            return new WatchlistTarget($"{input}'s Watchlist", $"/{input}/watchlist");
+        }
+
+        // Short URL (boxd.it) — read Location header without following redirect (avoids Cloudflare)
+        if (uri.Host.Equals("boxd.it", StringComparison.OrdinalIgnoreCase))
+        {
+            using var redirectHandler = new HttpClientHandler { AllowAutoRedirect = false };
+            using var httpClient = new HttpClient(redirectHandler);
+            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0");
+            using var response = await httpClient.GetAsync(uri).ConfigureAwait(false);
+            var location = response.Headers.Location;
+            if (location != null)
+            {
+                uri = location.IsAbsoluteUri ? location : new Uri(uri, location);
+            }
+        }
+
+        // Extract path info from letterboxd.com URL
+        if (uri.Host.Contains("letterboxd.com", StringComparison.OrdinalIgnoreCase))
+        {
+            var segments = uri.AbsolutePath.Trim('/').Split('/');
+
+            // List URL: /username/list/list-slug/
+            if (segments.Length >= 3 && segments[1] == "list")
+            {
+                var username = segments[0];
+                var listSlug = segments[2];
+                return new WatchlistTarget(
+                    $"{username} - {listSlug}",
+                    $"/{username}/list/{listSlug}");
+            }
+
+            // Watchlist or profile URL: /username/ or /username/watchlist/
+            if (segments.Length > 0 && !string.IsNullOrEmpty(segments[0]))
+            {
+                var username = segments[0];
+                return new WatchlistTarget($"{username}'s Watchlist", $"/{username}/watchlist");
+            }
+        }
+
+        return new WatchlistTarget($"{input}'s Watchlist", $"/{input}/watchlist");
+    }
+
+    public async Task<List<FilmResult>> GetFilmsFromList(string basePath, int pageNum)
+    {
+        var films = new List<FilmResult>();
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"{basePath}/page/{pageNum}/");
+        SetNavigationHeaders(request.Headers);
+
+        using var response = await client.SendAsync(request).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+
+        var html = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        var htmlDoc = new HtmlDocument();
+        htmlDoc.LoadHtml(html);
+
+        var posters = htmlDoc.DocumentNode.SelectNodes("//div[@data-component-class='LazyPoster']");
+
+        if (posters == null)
+        {
+            return films;
+        }
+
+        foreach (var poster in posters)
+        {
+            var filmSlug = poster.GetAttributeValue("data-item-slug", string.Empty);
+            if (string.IsNullOrEmpty(filmSlug))
+            {
+                continue;
+            }
+
+            var film = await GetFilmTmdbIdFromSlug(filmSlug).ConfigureAwait(false);
+            if (film != null)
+            {
+                films.Add(film);
+            }
+
+            await Task.Delay(2000 + Random.Shared.Next(1000)).ConfigureAwait(false);
+        }
+
+        bool isNextPage = htmlDoc.DocumentNode.SelectNodes($"//li[a/text() = '{pageNum + 1}']") is not null;
+
+        if (isNextPage)
+        {
+            var nextPageFilms = await GetFilmsFromList(basePath, pageNum + 1).ConfigureAwait(false);
+            films.AddRange(nextPageFilms);
+        }
+
+        return films;
+    }
+
+    public async Task<FilmResult?> GetFilmTmdbIdFromSlug(string filmSlug)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/film/{filmSlug}/");
+        SetNavigationHeaders(request.Headers);
+
+        using var response = await client.SendAsync(request).ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+
+        var html = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+        var htmlDoc = new HtmlDocument();
+        htmlDoc.LoadHtml(html);
+
+        var body = htmlDoc.DocumentNode.SelectSingleNode("//body");
+        if (body == null)
+        {
+            return null;
+        }
+
+        string filmId = body.GetAttributeValue("data-tmdb-id", string.Empty);
+        if (string.IsNullOrEmpty(filmId))
+        {
+            return null;
+        }
+
+        return new FilmResult(filmSlug, filmId);
     }
 
     private static string? ExtractHiddenInput(string html, string name)
