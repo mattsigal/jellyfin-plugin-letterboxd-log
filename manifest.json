@@ -23,6 +23,14 @@
     "imageUrl": "https://raw.githubusercontent.com/Gizmo091/jellyfin-plugin-letterboxd-sync/master/images/letterboxd-sync.png",
     "versions": [
       {
+        "version": "1.4.1.0",
+        "changelog": "- fix: sidebar menu not showing for non-admin users (760fc94)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Gizmo091/jellyfin-plugin-letterboxd-sync/releases/download/v1.4.1/jellyfin-plugin-letterboxd-sync-v1.4.1.zip",
+        "checksum": "804b4c95e2c7e65cc6d76b236a0c9d3b",
+        "timestamp": "2026-02-10T18:09:42Z"
+      },
+      {
         "version": "1.4.0.0",
         "changelog": "- feat: inject sidebar menu for non-admin users via FileTransformation (074a3db)",
         "targetAbi": "10.11.0.0",
