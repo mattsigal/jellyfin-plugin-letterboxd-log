@@ -22,10 +22,16 @@ public class LetterboxdSyncController : ControllerBase
         var api = new LetterboxdApi();
         try
         {
+            // If user provided pre-solved cookies (e.g., cf_clearance), inject them before attempting auth
+            if (!string.IsNullOrWhiteSpace(body.CookiesRaw))
+            {
+                api.SetRawCookies(body.CookiesRaw!);
+            }
+
             await api.Authenticate(body.UserLetterboxd, body.PasswordLetterboxd).ConfigureAwait(false);
             return Ok();
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             return Unauthorized(new { Message = ex.Message });
         }

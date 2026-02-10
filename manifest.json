@@ -4,20 +4,40 @@
     "name": "LetterboxdSync",
     "overview": "Syncs watched movies with Letterboxd diary",
     "description": "A third party plugin to keep your watched movie history automatically updated to a Letterboxd account",
-    "owner": "danielveigasilva",
+    "owner": "hrqmonteiro",
     "authors": [
       {
         "name": "Daniel Veiga",
-        "profil": "https://github.com/danielveigasilva"
+        "profile": "https://github.com/danielveigasilva"
       },
       {
         "name": "Mathieu Vedie",
-        "profil": "https://github.com/Gizmo091"
+        "profile": "https://github.com/Gizmo091"
+      },
+      {
+        "name": "Henrique Monteiro",
+        "profile": "https://github.com/hrqmonteiro"
       }
     ],
     "category": "General",
-    "imageUrl": "https://raw.githubusercontent.com/danielveigasilva/jellyfin-plugin-letterboxd-sync/master/images/letterboxd-sync.png",
+    "imageUrl": "https://raw.githubusercontent.com/hrqmonteiro/jellyfin-plugin-letterboxd-sync/master/images/letterboxd-sync.png",
     "versions": [
+      {
+        "version": "1.2.1.0",
+        "changelog": "- fix: order of sync task on tmdb 403 error; detailed logs (b44a4db)\n- chore: edit README.md, workflow and added images (0f9c3aa)\n- chore(release): v1.1.11 (133dd2f)\n- chore: edit manifest.json (5a7a02e)\n- chore(release): v1.1.10 (b108c84)\n- fix: run sync task with cookiesraw before authenticate if exists (f5a8da9)\n- chore: change README.md (ae90ddb)\n- chore(release): v1.1.9 (35cf1d4)\n- chore: fix csrf and cloudflare error; add cookies input on settings (148e3e6)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/hrqmonteiro/jellyfin-plugin-letterboxd-sync/releases/download/v1.2.1/jellyfin-plugin-letterboxd-sync-v1.2.1.zip",
+        "checksum": "c0bae6324f0c98de8b64a46893c4c4e7",
+        "timestamp": "2026-01-31T23:02:53Z"
+      },
+      {
+        "version": "1.2.0.0",
+        "changelog": "- feat: fixing csrf and cloudflare login error; adding raw cookies section on plugin settings to bypass it (5a36a5e)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/hrqmonteiro/jellyfin-plugin-letterboxd-sync/releases/download/v1.2.0/jellyfin-plugin-letterboxd-sync-v1.2.0.zip",
+        "checksum": "a46a542a95d96ddab5155f247a7f85d5",
+        "timestamp": "2026-01-31T22:53:01Z"
+      },
       {
         "version": "1.1.8.0",
         "changelog": "- update: add ability to restrict lookback on film updates to avoid letterboxd load (005c655)",

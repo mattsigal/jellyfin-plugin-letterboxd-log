@@ -17,7 +17,6 @@ namespace LetterboxdSync;
 public class LetterboxdSyncTask : IScheduledTask
 {
     private readonly ILogger _logger;
-    private readonly ILoggerFactory _loggerFactory;
     private readonly ILibraryManager _libraryManager;
     private readonly IUserManager _userManager;
     private readonly IUserDataManager _userDataManager;
@@ -29,7 +28,6 @@ public class LetterboxdSyncTask : IScheduledTask
             IUserDataManager userDataManager)
         {
             _logger = loggerFactory.CreateLogger<LetterboxdSyncTask>();
-            _loggerFactory = loggerFactory;
             _userManager = userManager;
             _libraryManager = libraryManager;
             _userDataManager = userDataManager;
@@ -65,7 +63,9 @@ public class LetterboxdSyncTask : IScheduledTask
             });
 
             if (lstMoviesPlayed.Count == 0)
+            {
                 continue;
+            }
 
             // Apply date filtering if enabled
             if (account.EnableDateFilter)
@@ -81,6 +81,7 @@ public class LetterboxdSyncTask : IScheduledTask
             var api = new LetterboxdApi();
             try
             {
+                api.SetRawCookies(account.CookiesRaw);
                 await api.Authenticate(account.UserLetterboxd, account.PasswordLetterboxd).ConfigureAwait(false);
             }
             catch (Exception ex)
@@ -109,6 +110,9 @@ public class LetterboxdSyncTask : IScheduledTask
                     {
                         var filmResult = await api.SearchFilmByTmdbId(tmdbid).ConfigureAwait(false);
 
+                        // Add a small delay between lookups to avoid 403 (Cloudflare/Anti-bot)
+                        await Task.Delay(1000 + Random.Shared.Next(1000), cancellationToken).ConfigureAwait(false);
+
                         var dateLastLog = await api.GetDateLastLog(filmResult.filmSlug).ConfigureAwait(false);
                         viewingDate = new DateTime(viewingDate.Value.Year, viewingDate.Value.Month, viewingDate.Value.Day);
 
@@ -124,8 +128,7 @@ public class LetterboxdSyncTask : IScheduledTask
                         }
                         else
                         {
-                            await api.MarkAsWatched(filmResult.filmId, viewingDate, tags, favorite).ConfigureAwait(false);
-
+                            await api.MarkAsWatched(filmResult.filmSlug, filmResult.filmId, viewingDate, tags, favorite).ConfigureAwait(false);
                             _logger.LogInformation(
                                 @"Film logged in Letterboxd
                                 User: {Username} ({UserId})
@@ -161,7 +164,6 @@ public class LetterboxdSyncTask : IScheduledTask
         }
 
         progress.Report(100);
-        return;
     }
 
     public IEnumerable<TaskTriggerInfo> GetDefaultTriggers() => new[]

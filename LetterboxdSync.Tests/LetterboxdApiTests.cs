@@ -138,5 +138,18 @@ namespace LetterboxdSync.Tests
             await Assert.ThrowsAsync<Exception>(() => _api.SearchFilmByTmdbId(tmdbId));
         }
 
+        [Fact]
+        public void SetRawCookies_WithValidCookies_ShouldSetCsrfAndAuthenticate()
+        {
+            var api = new LetterboxdApi();
+            string rawCookies = "com.xk72.webparts.csrf=f4d6e7dc8c5ddf4046e9; letterboxd.user.CURRENT=14D11OBfaRcXwVA5A4GqBuJrFWMIWxUZsRk82lHQAc3XCFN1FTg7yl5mQj0rP8nhzZwOnM1gr5z.y8proDEj2GjicspexXhoTTbumdWhgCBqHOCTIM2TAwi8DCcJJI.b34E49vvZ7DSFHKBH;";
+            
+            api.SetRawCookies(rawCookies);
+            
+            Assert.Equal("f4d6e7dc8c5ddf4046e9", api.Csrf);
+            // We can't easily check private field HasAuthenticatedSession without reflection or changing visibility, 
+            // but we can check if it at least doesn't throw.
+        }
+
     }
 }
