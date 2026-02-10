@@ -23,6 +23,14 @@
     "imageUrl": "https://raw.githubusercontent.com/Gizmo091/jellyfin-plugin-letterboxd-sync/master/images/letterboxd-sync.png",
     "versions": [
       {
+        "version": "1.8.2.0",
+        "changelog": "- fix: admin dashboard links to admin config page instead of user config (5c803c7)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Gizmo091/jellyfin-plugin-letterboxd-sync/releases/download/v1.8.2/jellyfin-plugin-letterboxd-sync-v1.8.2.zip",
+        "checksum": "bb3c3032ae6aa48bbc7a922500ab2c31",
+        "timestamp": "2026-02-10T22:26:26Z"
+      },
+      {
         "version": "1.8.1.0",
         "changelog": "- fix: remove direct HTML injection fallback, fix admin user selector (5a4a7ba)",
         "targetAbi": "10.11.0.0",
