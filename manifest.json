@@ -23,6 +23,14 @@
     "imageUrl": "https://raw.githubusercontent.com/Gizmo091/jellyfin-plugin-letterboxd-sync/master/images/letterboxd-sync.png",
     "versions": [
       {
+        "version": "1.8.1.0",
+        "changelog": "- fix: remove direct HTML injection fallback, fix admin user selector (5a4a7ba)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/Gizmo091/jellyfin-plugin-letterboxd-sync/releases/download/v1.8.1/jellyfin-plugin-letterboxd-sync-v1.8.1.zip",
+        "checksum": "d96f5929435041db727637b5504bb455",
+        "timestamp": "2026-02-10T22:13:38Z"
+      },
+      {
         "version": "1.8.0.0",
         "changelog": "- feat: merge letterboxd-watchlist - user config, watchlist/list sync, sidebar menu, i18n, smart auth (ef58625)\n- feat: merge letterboxd-watchlist - user config, watchlist/list sync, sidebar menu, i18n, smart auth (83482e0)\n- chore: trigger rebuild for v1.7.3 (c3184ba)\n- fix: do not truncate JSON response body before parsing in MarkAsWatched (ce62b74)\n- chore(release): v1.2.1 (0732dd4)",
         "targetAbi": "10.11.0.0",
