@@ -96,11 +96,13 @@ public class LetterboxdWatchlistSyncTask : IScheduledTask
         progress.Report(100);
     }
 
-    private async Task SyncWatchlistForUser(Guid jellyfinUserId, string letterboxdUsername, CancellationToken cancellationToken)
+    private async Task SyncWatchlistForUser(Guid jellyfinUserId, string watchlistInput, CancellationToken cancellationToken)
     {
+        var letterboxdUsername = await LetterboxdApi.ResolveWatchlistInput(watchlistInput).ConfigureAwait(false);
+
         _logger.LogInformation(
-            "Syncing watchlist for Letterboxd user {LetterboxdUser} to Jellyfin user {UserId}",
-            letterboxdUsername, jellyfinUserId.ToString("N"));
+            "Syncing watchlist for Letterboxd user {LetterboxdUser} (input: {Input}) to Jellyfin user {UserId}",
+            letterboxdUsername, watchlistInput, jellyfinUserId.ToString("N"));
 
         var api = new LetterboxdApi();
         var watchlistFilms = await api.GetFilmsFromWatchlist(letterboxdUsername, 1).ConfigureAwait(false);

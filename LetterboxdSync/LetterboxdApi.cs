@@ -627,6 +627,55 @@ public class LetterboxdApi
         return false;
     }
 
+    /// <summary>
+    /// Resolves a watchlist input (short URL, full URL, or plain username) to a Letterboxd username.
+    /// Supports: "username", "https://boxd.it/QKjHO", "https://letterboxd.com/user/watchlist/", "letterboxd.com/user".
+    /// </summary>
+    public static async Task<string> ResolveWatchlistInput(string input)
+    {
+        input = input.Trim();
+
+        // Plain username — no dots or slashes
+        if (!input.Contains('/') && !input.Contains('.'))
+        {
+            return input;
+        }
+
+        // Normalize missing scheme
+        if (!input.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+        {
+            input = "https://" + input;
+        }
+
+        if (!Uri.TryCreate(input, UriKind.Absolute, out var uri))
+        {
+            return input;
+        }
+
+        // Short URL (boxd.it) — follow redirect to get the real Letterboxd URL
+        if (uri.Host.Equals("boxd.it", StringComparison.OrdinalIgnoreCase))
+        {
+            using var redirectHandler = new HttpClientHandler { AllowAutoRedirect = true };
+            using var httpClient = new HttpClient(redirectHandler);
+            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0");
+            using var response = await httpClient.GetAsync(uri).ConfigureAwait(false);
+            uri = response.RequestMessage?.RequestUri ?? uri;
+        }
+
+        // Extract username from letterboxd.com URL (first path segment)
+        if (uri.Host.Contains("letterboxd.com", StringComparison.OrdinalIgnoreCase))
+        {
+            var segments = uri.AbsolutePath.Trim('/').Split('/');
+            if (segments.Length > 0 && !string.IsNullOrEmpty(segments[0]))
+            {
+                return segments[0];
+            }
+        }
+
+        return input;
+    }
+
     public async Task<List<FilmResult>> GetFilmsFromWatchlist(string username, int pageNum)
     {
         var films = new List<FilmResult>();
