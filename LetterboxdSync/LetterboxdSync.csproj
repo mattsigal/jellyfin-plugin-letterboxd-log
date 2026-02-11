@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
     <CodeAnalysisRuleSet>../jellyfin.ruleset</CodeAnalysisRuleSet>
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
     <Version>1.9.0.1</Version>
     <AssemblyVersion>1.9.0.1</AssemblyVersion>
     <FileVersion>1.9.0.1</FileVersion>
@@ -15,8 +15,8 @@
 
   <ItemGroup>
     <PackageReference Include="HtmlAgilityPack" Version="1.6.11" />
-    <PackageReference Include="Jellyfin.Controller" Version="10.11.0" />
-    <PackageReference Include="Jellyfin.Model" Version="10.11.0" />
+    <PackageReference Include="Jellyfin.Controller" Version="10.11.0" PrivateAssets="All" />
+    <PackageReference Include="Jellyfin.Model" Version="10.11.0" PrivateAssets="All" />
   </ItemGroup>
 
   <ItemGroup>

@@ -12,8 +12,8 @@
         "changelog": "Fix: Restore logo and settings menu with namespace alignment.",
         "targetAbi": "10.0.0.0",
         "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.9.0.1/LetterboxdLog.zip",
-        "checksum": "659d29b8d80d3a04f6b30b6e5711bba987feed354577ae698f1598390273cb18",
-        "timestamp": "2026-02-10T20:09:53Z"
+        "checksum": "f56e666eaf459a6d9791bfed4996051fedb191536e50144e1eed38922376f8ef",
+        "timestamp": "2026-02-10T20:17:38Z"
       }
     ]
   }
