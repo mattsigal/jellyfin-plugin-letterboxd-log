@@ -18,7 +18,7 @@ $manifest = Get-Content $manifestPath | ConvertFrom-Json
 $manifest[0].versions[0].checksum = $checksum
 $manifest[0].versions[0].timestamp = $timestamp
 
-$manifest | ConvertTo-Json -Depth 10 | Set-Content $manifestPath
+$manifest | ConvertTo-Json -Depth 10 -AsArray | Set-Content $manifestPath
 
 Write-Host "Manifest updated with checksum: $checksum" -ForegroundColor Green
 Write-Host "Updated timestamp to: $timestamp" -ForegroundColor Green
