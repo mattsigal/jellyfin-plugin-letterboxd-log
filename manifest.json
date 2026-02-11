@@ -8,6 +8,14 @@
     "category": "Metadata",
     "versions": [
       {
+        "version": "1.9.0.0",
+        "changelog": "- Fix: Wrap manifest in an array for Jellyfin compatibility and update targetAbi (a9c5356)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.9.0/jellyfin-plugin-letterboxd-log-v1.9.0.zip",
+        "checksum": "6c418b434ad10ad1e42bbc973424a32e",
+        "timestamp": "2026-02-11T03:49:43Z"
+      },
+      {
         "version": "1.8.4.1",
         "changelog": "Initial fork with anti-bot measures, raw cookies support, and accessibility fixes.",
         "targetAbi": "10.0.0.0",
