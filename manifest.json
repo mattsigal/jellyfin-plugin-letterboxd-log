@@ -8,12 +8,12 @@
     "category": "Metadata",
     "versions": [
       {
-        "version": "1.9.1.0",
-        "changelog": "Fix: Identity update and compatibility refinement.",
+        "version": "1.9.1.1",
+        "changelog": "Fix: Checksum algorithm alignment (MD5) and minor refinements.",
         "targetAbi": "10.10.0.0",
-        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.9.1.0/LetterboxdLog.zip",
-        "checksum": "4257b9e49d3ada9ad4b62058ea138736c363e3da5ef5b106ff3da004f0f4dbb0",
-        "timestamp": "2026-02-10T20:33:01Z"
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.9.1.1/LetterboxdLog.zip",
+        "checksum": "089a88942d74de5639fa3e69f60ccde7",
+        "timestamp": "2026-02-10T20:41:27Z"
       }
     ]
   }

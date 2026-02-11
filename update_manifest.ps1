@@ -6,8 +6,8 @@ if (-not (Test-Path $zipPath)) {
     exit 1
 }
 
-# Calculate SHA256 Checksum
-$fileHash = Get-FileHash -Path $zipPath -Algorithm SHA256
+# Calculate MD5 Checksum (Compatibility with older Jellyfin)
+$fileHash = Get-FileHash -Path $zipPath -Algorithm MD5
 $checksum = $fileHash.Hash.ToLower()
 
 # Calculate Timestamp
