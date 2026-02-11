@@ -1,5 +1,5 @@
 
-export const pluginId = 'c2fb3d98-3336-4b87-a5c9-8a948bd87234';
+export const pluginId = '99ec381d-a07c-4a0f-b245-ccb37eb14369';
 
 export default function (view, params) {
 

@@ -1,6 +1,6 @@
 [
   {
-    "guid": "c2fb3d98-3336-4b87-a5c9-8a948bd87234",
+    "guid": "99ec381d-a07c-4a0f-b245-ccb37eb14369",
     "name": "LetterboxdLog",
     "description": "Log your Jellyfin playback to Letterboxd.",
     "overview": "Syncs your Jellyfin watch history to Letterboxd, supporting anti-bot measures and raw cookies.",
@@ -8,12 +8,12 @@
     "category": "Metadata",
     "versions": [
       {
-        "version": "1.9.0.1",
-        "changelog": "Fix: Restore logo and settings menu with namespace alignment.",
+        "version": "1.9.1.0",
+        "changelog": "Fix: Identity update and compatibility refinement.",
         "targetAbi": "10.10.0.0",
-        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.9.0.1/LetterboxdLog.zip",
-        "checksum": "467c8f1f962a3f0c5dbda4713b4cfd6c5a90f48fcfbac3f389b615e4a28d7e03",
-        "timestamp": "2026-02-10T20:25:04Z"
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.9.1.0/LetterboxdLog.zip",
+        "checksum": "4257b9e49d3ada9ad4b62058ea138736c363e3da5ef5b106ff3da004f0f4dbb0",
+        "timestamp": "2026-02-10T20:33:01Z"
       }
     ]
   }
