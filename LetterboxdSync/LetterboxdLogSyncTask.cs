@@ -102,7 +102,7 @@ public class LetterboxdLogSyncTask : IScheduledTask
                 int tmdbid;
                 string title = movie.OriginalTitle;
                 var userItemData = _userDataManager.GetUserData(user, movie);
-                bool favorite = movie.IsFavoriteOrLiked(user) && account.SendFavorite;
+                bool favorite = movie.IsFavoriteOrLiked(user, userItemData) && account.SendFavorite;
                 DateTime? viewingDate = userItemData.LastPlayedDate;
                 string[] tags = Array.Empty<string>();
 
@@ -200,7 +200,7 @@ public class LetterboxdLogSyncTask : IScheduledTask
             {
                 new TaskTriggerInfo
                 {
-                    Type = TaskTriggerInfo.TriggerInterval,
+                    Type = TaskTriggerInfoType.IntervalTrigger,
                     IntervalTicks = TimeSpan.FromDays(1).Ticks
                 }
             };

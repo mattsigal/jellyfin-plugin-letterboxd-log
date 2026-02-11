@@ -8,15 +8,15 @@
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
     <CodeAnalysisRuleSet>../jellyfin.ruleset</CodeAnalysisRuleSet>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
-    <Version>1.9.1.1</Version>
-    <AssemblyVersion>1.9.1.1</AssemblyVersion>
-    <FileVersion>1.9.1.1</FileVersion>
+    <Version>1.9.1.2</Version>
+    <AssemblyVersion>1.9.1.2</AssemblyVersion>
+    <FileVersion>1.9.1.2</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="HtmlAgilityPack" Version="1.6.11" />
-    <PackageReference Include="Jellyfin.Controller" Version="10.10.0" PrivateAssets="All" />
-    <PackageReference Include="Jellyfin.Model" Version="10.10.0" PrivateAssets="All" />
+    <PackageReference Include="Jellyfin.Controller" Version="10.11.6" PrivateAssets="All" />
+    <PackageReference Include="Jellyfin.Model" Version="10.11.6" PrivateAssets="All" />
   </ItemGroup>
 
   <ItemGroup>
