@@ -1,6 +1,6 @@
 using System;
 
-namespace LetterboxdSync.Configuration;
+namespace LetterboxdLog.Configuration;
 
 public class Account
 {

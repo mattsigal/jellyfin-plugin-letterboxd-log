@@ -109,7 +109,7 @@ export default function (view, params) {
             configUser.CookiesUserAgent = view.querySelector('#cookiesuseragent').value;
 
             const data = JSON.stringify(configUser);
-            const url = ApiClient.getUrl('Jellyfin.Plugin.LetterboxdSync/Authenticate');
+            const url = ApiClient.getUrl('Jellyfin.Plugin.LetterboxdLog/Authenticate');
 
             console.log(configUser);
             if (!configUser.Enable) {

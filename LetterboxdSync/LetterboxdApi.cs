@@ -11,7 +11,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using HtmlAgilityPack;
 
-namespace LetterboxdSync;
+namespace LetterboxdLog;
 
 public class LetterboxdApi
 {

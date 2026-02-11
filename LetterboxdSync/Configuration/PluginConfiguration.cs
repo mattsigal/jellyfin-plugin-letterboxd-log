@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using MediaBrowser.Model.Plugins;
 
-namespace LetterboxdSync.Configuration;
+namespace LetterboxdLog.Configuration;
 
 public class PluginConfiguration : BasePluginConfiguration
 {

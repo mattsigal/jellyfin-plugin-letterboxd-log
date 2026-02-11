@@ -1,13 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using LetterboxdSync.Configuration;
+using LetterboxdLog.Configuration;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
 
-namespace LetterboxdSync;
+namespace LetterboxdLog;
 
 /// <summary>
 /// The main plugin.
@@ -53,4 +53,14 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             }
         };
     }
+
+    /// <inheritdoc />
+    public Stream GetThumbImage()
+    {
+        var type = GetType();
+        return type.Assembly.GetManifestResourceStream(type.Namespace + ".Web.thumb.png");
+    }
+
+    /// <inheritdoc />
+    public string ThumbImageFormat => "image/png";
 }
