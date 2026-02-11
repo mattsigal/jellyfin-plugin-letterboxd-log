@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <AssemblyName>LetterboxdLog</AssemblyName>
-    <RootNamespace>LetterboxdSync</RootNamespace>
+    <RootNamespace>LetterboxdLog</RootNamespace>
     <Nullable>enable</Nullable>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
     <CodeAnalysisRuleSet>../jellyfin.ruleset</CodeAnalysisRuleSet>

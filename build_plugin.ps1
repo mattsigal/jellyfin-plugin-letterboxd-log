@@ -32,6 +32,6 @@ Write-Host "Zip created: $zipPath" -ForegroundColor Green
 # 3. Deployment Instructions
 Write-Host "`nTo Deploy to NAS:" -ForegroundColor Yellow
 Write-Host "1. Copy the DLL to your NAS:"
-Write-Host "   scp .\dist\LetterboxdSync.dll user@192.168.0.224:/var/packages/Jellyfin/target/var/data/plugins/LetterboxdSync/"
+Write-Host "   scp .\dist\LetterboxdLog.dll user@192.168.0.224:/var/packages/Jellyfin/target/var/data/plugins/LetterboxdLog/"
 Write-Host "   (Note: You may need to adjust the destination path based on your Synology install)"
 Write-Host "2. Restart Jellyfin on the NAS."

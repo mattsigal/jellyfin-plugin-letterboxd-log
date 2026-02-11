@@ -78,7 +78,7 @@ export default function (view, params) {
         });
     });
 
-    view.querySelector('#LetterboxdSyncConfigForm').addEventListener('submit', function (e) {
+    view.querySelector('#LetterboxdLogConfigForm').addEventListener('submit', function (e) {
 
         e.preventDefault();
 
