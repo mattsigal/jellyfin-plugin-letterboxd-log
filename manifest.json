@@ -8,6 +8,14 @@
     "category": "Metadata",
     "versions": [
       {
+        "version": "1.10.0.0",
+        "changelog": "- Fix: manifest.json must be an array. Update script to preserve array format. (73708f9)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.10.0/jellyfin-plugin-letterboxd-log-v1.10.0.zip",
+        "checksum": "0aa0fa8a6b069f62fc3661c42e550902",
+        "timestamp": "2026-02-11T04:11:00Z"
+      },
+      {
         "version": "1.9.0.1",
         "changelog": "Fix: Restore logo and settings menu with namespace alignment.",
         "targetAbi": "10.0.0.0",
