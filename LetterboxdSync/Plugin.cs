@@ -26,10 +26,10 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     }
 
     /// <inheritdoc />
-    public override string Name => "LetterboxdSync";
+    public override string Name => "LetterboxdLog";
 
     /// <inheritdoc />
-    public override Guid Id => Guid.Parse("b1fb3d98-3336-4b87-a5c9-8a948bd87233");
+    public override Guid Id => Guid.Parse("c2fb3d98-3336-4b87-a5c9-8a948bd87234");
 
     /// <summary>
     /// Gets the current plugin instance.

@@ -19,13 +19,14 @@ public class LetterboxdSyncController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult> Authenticate([FromBody] Account body)
     {
-        var api = new LetterboxdApi();
+        var api = new LetterboxdApi(body.CookiesUserAgent ?? body.UserAgent ?? string.Empty);
         try
         {
+            api.SetRawCookies(body.CookiesRaw ?? body.Cookie);
             await api.Authenticate(body.UserLetterboxd, body.PasswordLetterboxd).ConfigureAwait(false);
             return Ok();
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             return Unauthorized(new { Message = ex.Message });
         }

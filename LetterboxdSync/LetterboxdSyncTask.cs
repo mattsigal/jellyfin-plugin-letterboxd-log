@@ -1,16 +1,16 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using MediaBrowser.Model.Tasks;
-using MediaBrowser.Controller.Library;
-using Microsoft.Extensions.Logging;
-using LetterboxdSync.Configuration;
 using Jellyfin.Data.Enums;
+using LetterboxdSync.Configuration;
 using MediaBrowser.Controller.Entities;
-using System.Linq;
+using MediaBrowser.Controller.Library;
 using MediaBrowser.Model.Entities;
-using System.Globalization;
+using MediaBrowser.Model.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace LetterboxdSync;
 
@@ -38,13 +38,13 @@ public class LetterboxdSyncTask : IScheduledTask
     private static PluginConfiguration Configuration =>
             Plugin.Instance!.Configuration;
 
-    public string Name => "Played media sync with letterboxd";
+    public string Name => "Played media sync with letterboxd (LetterboxdLog)";
 
-    public string Key => "LetterboxdSync";
+    public string Key => "LetterboxdLogSync";
 
-    public string Description => "Sync movies with Letterboxd";
+    public string Description => "Sync movies with Letterboxd (Customized)";
 
-    public string Category => "LetterboxdSync";
+    public string Category => "LetterboxdLog";
 
 
     public async Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)
@@ -78,9 +78,10 @@ public class LetterboxdSyncTask : IScheduledTask
                 }).ToList();
             }
 
-            var api = new LetterboxdApi();
+            var api = new LetterboxdApi(account.CookiesUserAgent ?? account.UserAgent ?? string.Empty);
             try
             {
+                api.SetRawCookies(account.CookiesRaw ?? account.Cookie);
                 await api.Authenticate(account.UserLetterboxd, account.PasswordLetterboxd).ConfigureAwait(false);
             }
             catch (Exception ex)
@@ -96,66 +97,97 @@ public class LetterboxdSyncTask : IScheduledTask
 
             foreach (var movie in lstMoviesPlayed)
             {
+                if (cancellationToken.IsCancellationRequested) return;
+
                 int tmdbid;
                 string title = movie.OriginalTitle;
                 var userItemData = _userDataManager.GetUserData(user, movie);
                 bool favorite = movie.IsFavoriteOrLiked(user, userItemData) && account.SendFavorite;
                 DateTime? viewingDate = userItemData.LastPlayedDate;
-                string[] tags = new List<string>() { "" }.ToArray();
+                string[] tags = Array.Empty<string>();
+
+                FilmResult? filmResult = null;
 
                 if (int.TryParse(movie.GetProviderId(MetadataProvider.Tmdb), out tmdbid))
                 {
                     try
                     {
-                        var filmResult = await api.SearchFilmByTmdbId(tmdbid).ConfigureAwait(false);
+                        filmResult = await api.SearchFilmByTmdbId(tmdbid).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning("TMDB search failed for {Movie} ({TmdbId}): {Message}. Trying IMDb fallback...", title, tmdbid, ex.Message);
+                    }
+                }
 
-                        var dateLastLog = await api.GetDateLastLog(filmResult.filmSlug).ConfigureAwait(false);
-                        viewingDate = new DateTime(viewingDate.Value.Year, viewingDate.Value.Month, viewingDate.Value.Day);
-
-                        if (dateLastLog != null && dateLastLog.Value.Date == viewingDate.Value.Date)
+                if (filmResult == null)
+                {
+                    string imdbid = movie.GetProviderId(MetadataProvider.Imdb);
+                    if (!string.IsNullOrEmpty(imdbid))
+                    {
+                        try
                         {
-                            _logger.LogWarning(
-                                @"Film has been logged into Letterboxd previously ({Date})
-                                User: {Username} ({UserId})
-                                Movie: {Movie} ({TmdbId})",
-                                ((DateTime)dateLastLog).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                                user.Username, user.Id.ToString("N"),
-                                title, tmdbid);
+                            filmResult = await api.SearchFilmByImdbId(imdbid).ConfigureAwait(false);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError("IMDb search failed for {Movie} ({ImdbId}): {Message}", title, imdbid, ex.Message);
+                        }
+                    }
+                }
+
+                if (filmResult != null)
+                {
+                    try
+                    {
+                        var dateLastLog = await api.GetDateLastLog(filmResult.filmSlug).ConfigureAwait(false);
+
+                        // Apply user-configured timezone offset
+                        if (viewingDate.HasValue)
+                        {
+                            viewingDate = viewingDate.Value.AddHours(account.TimezoneOffset);
+                        }
+
+                        // Use only the date part for comparison
+                        DateTime viewingDateOnly = viewingDate.HasValue
+                            ? new DateTime(viewingDate.Value.Year, viewingDate.Value.Month, viewingDate.Value.Day)
+                            : DateTime.Today;
+
+                        if (dateLastLog != null && dateLastLog.Value.Date == viewingDateOnly.Date)
+                        {
+                            _logger.LogInformation(
+                                @"Film already logged in Letterboxd for this date ({Date})
+                                User: {Username}
+                                Movie: {Movie}",
+                                viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                                user.Username, title);
                         }
                         else
                         {
-                            await api.MarkAsWatched(filmResult.filmId, viewingDate, tags, favorite).ConfigureAwait(false);
+                            // human-like delay between films
+                            await Task.Delay(1000 + Random.Shared.Next(2000), cancellationToken).ConfigureAwait(false);
+
+                            await api.MarkAsWatched(filmResult.filmSlug, filmResult.filmId, viewingDate, tags, favorite).ConfigureAwait(false);
 
                             _logger.LogInformation(
                                 @"Film logged in Letterboxd
-                                User: {Username} ({UserId})
-                                Movie: {Movie} ({TmdbId})
+                                User: {Username}
+                                Movie: {Movie}
                                 Date: {ViewingDate}",
-                                user.Username, user.Id.ToString("N"),
-                                title, tmdbid, viewingDate);
+                                user.Username, title, viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
                         }
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(
-                            @"{Message}
-                            User: {Username} ({UserId})
-                            Movie: {Movie} ({TmdbId})
+                            @"Error logging film {Movie}: {Message}
                             StackTrace: {StackTrace}",
-                            ex.Message,
-                            user.Username, user.Id.ToString("N"),
-                            title, tmdbid,
-                            ex.StackTrace);
+                            title, ex.Message, ex.StackTrace);
                     }
                 }
                 else
                 {
-                    _logger.LogWarning(
-                        @"Film does not have TmdbId
-                        User: {Username} ({UserId})
-                        Movie: {Movie}",
-                        user.Username, user.Id.ToString("N"),
-                        title);
+                    _logger.LogWarning("Could not find movie on Letterboxd: {Movie}", title);
                 }
             }
         }

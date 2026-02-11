@@ -2,11 +2,15 @@
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
+    <AssemblyName>LetterboxdLog</AssemblyName>
     <RootNamespace>LetterboxdSync</RootNamespace>
     <Nullable>enable</Nullable>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
-    <CodeAnalysisRuleSet>../jellyfin.ruleset</CodeAnalysisRuleSet>    
+    <CodeAnalysisRuleSet>../jellyfin.ruleset</CodeAnalysisRuleSet>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <Version>1.1.9.0</Version>
+    <AssemblyVersion>1.1.9.0</AssemblyVersion>
+    <FileVersion>1.1.9.0</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,0 +1,21 @@
+  Determining projects to restore...
+C:\Users\matth\OneDrive - Simon Fraser University (1sfu)\attn\DeveloperMode\jellyfin-plugin-letterboxd-sync\LetterboxdSync\LetterboxdSync.csproj : error NU1100: Unable to resolve 'HtmlAgilityPack (>= 1.6.11)' for 'net9.0'.
+C:\Users\matth\OneDrive - Simon Fraser University (1sfu)\attn\DeveloperMode\jellyfin-plugin-letterboxd-sync\LetterboxdSync\LetterboxdSync.csproj : error NU1100: Unable to resolve 'Jellyfin.Controller (>= 10.11.0)' for 'net9.0'.
+C:\Users\matth\OneDrive - Simon Fraser University (1sfu)\attn\DeveloperMode\jellyfin-plugin-letterboxd-sync\LetterboxdSync\LetterboxdSync.csproj : error NU1100: Unable to resolve 'Jellyfin.Model (>= 10.11.0)' for 'net9.0'.
+C:\Users\matth\OneDrive - Simon Fraser University (1sfu)\attn\DeveloperMode\jellyfin-plugin-letterboxd-sync\LetterboxdSync\LetterboxdSync.csproj : error NU1100: Unable to resolve 'SerilogAnalyzer (>= 0.15.0)' for 'net9.0'.
+C:\Users\matth\OneDrive - Simon Fraser University (1sfu)\attn\DeveloperMode\jellyfin-plugin-letterboxd-sync\LetterboxdSync\LetterboxdSync.csproj : error NU1100: Unable to resolve 'StyleCop.Analyzers (>= 1.2.0-beta.507)' for 'net9.0'.
+C:\Users\matth\OneDrive - Simon Fraser University (1sfu)\attn\DeveloperMode\jellyfin-plugin-letterboxd-sync\LetterboxdSync\LetterboxdSync.csproj : error NU1100: Unable to resolve 'SmartAnalyzers.MultithreadingAnalyzer (>= 1.1.31)' for 'net9.0'.
+  Failed to restore C:\Users\matth\OneDrive - Simon Fraser University (1sfu)\attn\DeveloperMode\jellyfin-plugin-letterboxd-sync\LetterboxdSync\LetterboxdSync.csproj (in 162 ms).
+
+Build FAILED.
+
+C:\Users\matth\OneDrive - Simon Fraser University (1sfu)\attn\DeveloperMode\jellyfin-plugin-letterboxd-sync\LetterboxdSync\LetterboxdSync.csproj : error NU1100: Unable to resolve 'HtmlAgilityPack (>= 1.6.11)' for 'net9.0'.
+C:\Users\matth\OneDrive - Simon Fraser University (1sfu)\attn\DeveloperMode\jellyfin-plugin-letterboxd-sync\LetterboxdSync\LetterboxdSync.csproj : error NU1100: Unable to resolve 'Jellyfin.Controller (>= 10.11.0)' for 'net9.0'.
+C:\Users\matth\OneDrive - Simon Fraser University (1sfu)\attn\DeveloperMode\jellyfin-plugin-letterboxd-sync\LetterboxdSync\LetterboxdSync.csproj : error NU1100: Unable to resolve 'Jellyfin.Model (>= 10.11.0)' for 'net9.0'.
+C:\Users\matth\OneDrive - Simon Fraser University (1sfu)\attn\DeveloperMode\jellyfin-plugin-letterboxd-sync\LetterboxdSync\LetterboxdSync.csproj : error NU1100: Unable to resolve 'SerilogAnalyzer (>= 0.15.0)' for 'net9.0'.
+C:\Users\matth\OneDrive - Simon Fraser University (1sfu)\attn\DeveloperMode\jellyfin-plugin-letterboxd-sync\LetterboxdSync\LetterboxdSync.csproj : error NU1100: Unable to resolve 'StyleCop.Analyzers (>= 1.2.0-beta.507)' for 'net9.0'.
+C:\Users\matth\OneDrive - Simon Fraser University (1sfu)\attn\DeveloperMode\jellyfin-plugin-letterboxd-sync\LetterboxdSync\LetterboxdSync.csproj : error NU1100: Unable to resolve 'SmartAnalyzers.MultithreadingAnalyzer (>= 1.1.31)' for 'net9.0'.
+    0 Warning(s)
+    6 Error(s)
+
+Time Elapsed 00:00:00.82

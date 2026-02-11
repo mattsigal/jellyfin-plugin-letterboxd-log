@@ -8,10 +8,16 @@
 </div>
 
 <p/>
-    
+
 <p align="center">
     A unofficial plugin to keep your watched movie history from Jellyfin automatically updated to your Letterboxd diary.
 </p>
+
+## Changelog (Manual)
+
+### 1.1.9.0
+
+- **Feat**: Added IMDb ID fallback. If a movie has no TMDb ID (or lookup fails), the plugin will now attempt to sync using the IMDb ID (`MetadataProvider.Imdb`).
 
 ## About
 
@@ -27,19 +33,19 @@ This plugin sends daily updates to the Letterboxd diary informing the films watc
 https://raw.githubusercontent.com/Gizmo091/jellyfin-plugin-letterboxd-sync/master/manifest.json
 ```
 
-3. Go back to `Catalog`, click on 'LetterboxdSync' at 'General' group and install the most recent version.
+1. Go back to `Catalog`, click on 'LetterboxdSync' at 'General' group and install the most recent version.
 
-4. Restart Jellyfin and go back to the plugin settings. Go to `My Plugins` and click on 'LetterboxdSync' to configure.
-   
+2. Restart Jellyfin and go back to the plugin settings. Go to `My Plugins` and click on 'LetterboxdSync' to configure.
+
 ## Configure
 
- - You can associate one Letterboxd account for each Jellyfin user. You need click `Save` for each one.
+- You can associate one Letterboxd account for each Jellyfin user. You need click `Save` for each one.
 
- - The synchronization task runs every 24 hours and only for uses accounts marked as `Enable`.
+- The synchronization task runs every 24 hours and only for uses accounts marked as `Enable`.
 
- - Check `Send Favorite` if you want films marked as favorites on Jellyfin to be marked as favorites on Letterboxd.
+- Check `Send Favorite` if you want films marked as favorites on Jellyfin to be marked as favorites on Letterboxd.
 
- - By default the plugin will do a full sync to letterboxd. Once done initially its advised to `Enable Date Filtering` with a short lookback to avoid load on letterboxd.
+- By default the plugin will do a full sync to letterboxd. Once done initially its advised to `Enable Date Filtering` with a short lookback to avoid load on letterboxd.
 
 <p align="center">
     <img src="/images/config-page.png" width="70%">

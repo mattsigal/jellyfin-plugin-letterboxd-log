@@ -17,4 +17,14 @@ public class Account
     public bool EnableDateFilter { get; set; }
 
     public int DateFilterDays { get; set; } = 7;
+
+    public int TimezoneOffset { get; set; } = 0;
+
+    public string? Cookie { get; set; }
+
+    public string? UserAgent { get; set; }
+
+    public string? CookiesRaw { get; set; }
+
+    public string? CookiesUserAgent { get; set; }
 }
