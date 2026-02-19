@@ -150,23 +150,13 @@ jobs:
                 git push origin v${{ needs.build.outputs.release-version }}
             
             - name: 'Create Release'
-              id: create-release
-              uses: actions/create-release@v1
+              uses: softprops/action-gh-release@v2
               with:
                 tag_name: v${{ needs.build.outputs.release-version }}
-                release_name: v${{ needs.build.outputs.release-version }}
+                name: v${{ needs.build.outputs.release-version }}
+                body: ${{needs.build.outputs.changelog}}
                 draft: false
                 prerelease: false
-                body: ${{needs.build.outputs.changelog}}
-              env:
-                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-            - name: 'Upload Release Asset'
-              uses: actions/upload-release-asset@v1
-              with:
-                upload_url: ${{ steps.create-release.outputs.upload_url }}
-                asset_path: publish/${{ github.event.repository.name }}-v${{ needs.build.outputs.release-version }}.zip
-                asset_name: ${{ github.event.repository.name }}-v${{ needs.build.outputs.release-version }}.zip
-                asset_content_type: application/zip
+                files: publish/${{ github.event.repository.name }}-v${{ needs.build.outputs.release-version }}.zip
               env:
                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
