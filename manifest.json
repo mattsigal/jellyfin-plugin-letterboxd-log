@@ -8,6 +8,14 @@
     "category": "Metadata",
     "versions": [
       {
+        "version": "1.10.1.0",
+        "changelog": "- fix(ci): Add version collision detection to auto-bump logic (a615f7e)\n- fix(ci): Standardize version control (remove CSPROJ version) and harden git push workflow (4deccff)\n- fix(ci): Use explicit refspec for git push to avoid detached HEAD error (128) (424ea60)\n- fix(ci): Target specific project in dotnet publish to avoid solution-level output error (e46351c)\n- fix(ci): Update publish workflow to use correct DLL name and sync Directory.Build.props (0231ac4)\n- Refactor: Fix build errors, StyleCop warnings, add ignore logic, and bump version to 1.9.2.0 (5da0ed6)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.10.1/jellyfin-plugin-letterboxd-log-v1.10.1.zip",
+        "checksum": "b10e6ec6df4b4ddc6abff334ccaf6e91",
+        "timestamp": "2026-02-19T08:16:48Z"
+      },
+      {
         "version": "1.9.1.2",
         "changelog": "Fix: Compatibility update for Jellyfin 10.11.x (EFCore/User changes).",
         "targetAbi": "10.11.0.0",
