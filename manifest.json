@@ -8,14 +8,6 @@
     "category": "Metadata",
     "versions": [
       {
-        "version": "1.9.2.0",
-        "changelog": "Feature: Added .ignore tag support and rewatch logic. Fix: StyleCop cleanup and build fixes.",
-        "targetAbi": "10.11.0.0",
-        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.9.2.0/LetterboxdLog.zip",
-        "checksum": "CHECKSUM_PLACEHOLDER",
-        "timestamp": "2026-02-19T00:00:00Z"
-      },
-      {
         "version": "1.9.1.2",
         "changelog": "Fix: Compatibility update for Jellyfin 10.11.x (EFCore/User changes).",
         "targetAbi": "10.11.0.0",
