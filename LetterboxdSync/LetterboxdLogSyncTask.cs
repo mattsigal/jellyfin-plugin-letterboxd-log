@@ -173,6 +173,7 @@ public class LetterboxdLogSyncTask : IScheduledTask
                         {
                             movieTags.Add(todaySkip);
                             movie.Tags = movieTags.ToArray();
+                            await movie.UpdateToRepositoryAsync(ItemUpdateType.MetadataEdit, cancellationToken).ConfigureAwait(false);
                         }
 
                         _logger.LogInformation("Skipping Letterboxd sync for {Movie} due to presence of .ignore tag.", title);
