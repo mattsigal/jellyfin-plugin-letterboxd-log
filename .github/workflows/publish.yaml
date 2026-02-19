@@ -71,7 +71,7 @@ jobs:
             - name: 'Build project'
               run: |
                 dotnet restore
-                dotnet publish --configuration Release --output publish
+                dotnet publish LetterboxdSync/LetterboxdSync.csproj --configuration Release --output publish
 
             - name: 'Generate Artefacts'
               run: |
