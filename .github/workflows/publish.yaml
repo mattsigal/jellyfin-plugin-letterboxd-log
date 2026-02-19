@@ -45,7 +45,14 @@ jobs:
                 INCREMENT_LEVEL=$(conventional-recommended-bump -p angular  --tag-prefix "v")
                 echo "INCREMENT_LEVEL = $INCREMENT_LEVEL"
                 NEW_VERSION=$(npx semver $CUR_VERSION_3PART -i $INCREMENT_LEVEL 2>&1)
-                echo "NEW_VERSION = $NEW_VERSION"
+                echo "Initial NEW_VERSION = $NEW_VERSION"
+
+                # Check for existing tags and increment patch if needed to avoid collisions
+                while git rev-parse "v$NEW_VERSION" >/dev/null 2>&1; do
+                    echo "Tag v$NEW_VERSION already exists. Bump patch."
+                    NEW_VERSION=$(npx semver $NEW_VERSION -i patch 2>&1)
+                done
+                echo "Final NEW_VERSION = $NEW_VERSION"
                 
                 CHANGELOG=$(git log $CUR_TAG..HEAD --no-merges --pretty=format:"- %s (%h)")
                 echo "CHANGELOG = $CHANGELOG"
