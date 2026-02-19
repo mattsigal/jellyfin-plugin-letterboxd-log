@@ -1,7 +1,7 @@
 using System;
-using System.IO;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using LetterboxdLog.Configuration;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
@@ -32,6 +32,9 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// <inheritdoc />
     public override Guid Id => Guid.Parse("99ec381d-a07c-4a0f-b245-ccb37eb14369");
 
+    /// <inheritdoc />
+    public string ThumbImageFormat => "image/png";
+
     /// <summary>
     /// Gets the current plugin instance.
     /// </summary>
@@ -59,9 +62,6 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     public Stream GetThumbImage()
     {
         var type = GetType();
-        return type.Assembly.GetManifestResourceStream(type.Namespace + ".Web.thumb.png");
+        return type.Assembly.GetManifestResourceStream(type.Namespace + ".Web.thumb.png") ?? Stream.Null;
     }
-
-    /// <inheritdoc />
-    public string ThumbImageFormat => "image/png";
 }

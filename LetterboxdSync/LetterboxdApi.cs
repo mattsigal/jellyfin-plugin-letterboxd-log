@@ -13,36 +13,89 @@ using HtmlAgilityPack;
 
 namespace LetterboxdLog;
 
-public class LetterboxdApi
+public class LetterboxdApi : IDisposable
 {
-    private string csrf = string.Empty;
-    private string username = string.Empty;
-
-    public string Csrf => csrf;
-
-    private readonly CookieContainer cookieContainer = new CookieContainer();
-    private readonly HttpClientHandler handler;
-    private readonly HttpClient client;
-
     private static readonly Uri BaseUri = new Uri("https://letterboxd.com/");
 
-    private bool HasAuthenticatedSession()
+    private readonly CookieContainer _cookieContainer = new CookieContainer();
+    private readonly HttpClientHandler _handler;
+    private readonly HttpClient _client;
+
+    private string _csrf = string.Empty;
+    private string _username = string.Empty;
+
+    public LetterboxdApi(string userAgent = "")
     {
-        var cookies = cookieContainer.GetCookies(BaseUri);
-        return !string.IsNullOrWhiteSpace(cookies["letterboxd.user.CURRENT"]?.Value);
+        _handler = new HttpClientHandler
+        {
+            CookieContainer = _cookieContainer,
+            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli,
+            AllowAutoRedirect = true,
+            CheckCertificateRevocationList = true
+        };
+
+        _client = new HttpClient(_handler)
+        {
+            BaseAddress = BaseUri
+        };
+
+        _client.DefaultRequestHeaders.UserAgent.Clear();
+        if (!string.IsNullOrWhiteSpace(userAgent))
+        {
+            _client.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
+        }
+        else
+        {
+            _client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36");
+        }
+
+        _client.DefaultRequestHeaders.Accept.Clear();
+        _client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("text/html"));
+        _client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/xhtml+xml"));
+        _client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/xml", 0.9));
+        _client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*", 0.8));
+        _client.DefaultRequestHeaders.AcceptLanguage.ParseAdd("en-US,en;q=0.9");
+        _client.DefaultRequestHeaders.TryAddWithoutValidation("Accept-Encoding", "gzip, deflate, br");
+        _client.DefaultRequestHeaders.Connection.Add("keep-alive");
+
+        _client.DefaultRequestHeaders.TryAddWithoutValidation("sec-fetch-dest", "document");
+        _client.DefaultRequestHeaders.TryAddWithoutValidation("sec-fetch-mode", "navigate");
+        _client.DefaultRequestHeaders.TryAddWithoutValidation("sec-fetch-site", "none");
+        _client.DefaultRequestHeaders.TryAddWithoutValidation("sec-fetch-user", "?1");
+        _client.DefaultRequestHeaders.TryAddWithoutValidation("upgrade-insecure-requests", "1");
+        _client.DefaultRequestHeaders.TryAddWithoutValidation("Priority", "u=0, i");
+    }
+
+    public string Csrf => _csrf;
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
     }
 
     public void SetRawCookies(string? raw)
     {
-        if (string.IsNullOrWhiteSpace(raw)) return;
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return;
+        }
 
         var baseUri = new Uri("https://letterboxd.com/");
         foreach (var part in raw.Split(';'))
         {
             var kv = part.Trim();
-            if (string.IsNullOrEmpty(kv)) continue;
-            var eq = kv.IndexOf('=');
-            if (eq <= 0) continue;
+            if (string.IsNullOrEmpty(kv))
+            {
+                continue;
+            }
+
+            var eq = kv.IndexOf('=', StringComparison.Ordinal);
+            if (eq <= 0)
+            {
+                continue;
+            }
+
             var name = kv.Substring(0, eq).Trim();
             var val = kv.Substring(eq + 1).Trim();
             try
@@ -52,17 +105,17 @@ public class LetterboxdApi
                 {
                     HttpOnly = false,
                 };
-                cookieContainer.Add(baseUri, cookie);
+                _cookieContainer.Add(baseUri, cookie);
 
                 var dotCookie = new Cookie(name, val, "/", ".letterboxd.com")
                 {
                     HttpOnly = false,
                 };
-                cookieContainer.Add(baseUri, dotCookie);
+                _cookieContainer.Add(baseUri, dotCookie);
 
                 if (string.Equals(name, "com.xk72.webparts.csrf", StringComparison.OrdinalIgnoreCase))
                 {
-                    this.csrf = val;
+                    _csrf = val;
                 }
             }
             catch
@@ -72,110 +125,9 @@ public class LetterboxdApi
         }
     }
 
-    private async Task RefreshCsrfFromFilmPageAsync(string filmSlug)
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"/film/{filmSlug}/");
-        SetNavigationHeaders(request.Headers, "same-origin");
-        using var response = await client.SendAsync(request).ConfigureAwait(false);
-        var html = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-
-        var fresh = ExtractHiddenInput(html, "__csrf");
-        if (string.IsNullOrWhiteSpace(fresh))
-            throw new Exception($"Could not extract __csrf from film page /film/{filmSlug}/");
-
-        this.csrf = fresh!;
-    }
-
-    private string GetCsrfFromCookie()
-    {
-        var cookies = cookieContainer.GetCookies(BaseUri);
-        return cookies["com.xk72.webparts.csrf"]?.Value ?? string.Empty;
-    }
-
-    private async Task RefreshCsrfCookieAsync()
-    {
-        using (var request = new HttpRequestMessage(HttpMethod.Get, "/"))
-        {
-            SetNavigationHeaders(request.Headers);
-            using var _ = await client.SendAsync(request).ConfigureAwait(false);
-        }
-
-        var token = GetCsrfFromCookie();
-        if (string.IsNullOrWhiteSpace(token))
-            throw new Exception("Could not read CSRF cookie 'com.xk72.webparts.csrf' after refreshing.");
-        this.csrf = token;
-    }
-
-    public LetterboxdApi(string userAgent = "")
-    {
-        handler = new HttpClientHandler
-        {
-            CookieContainer = cookieContainer,
-            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli,
-            AllowAutoRedirect = true
-        };
-
-        client = new HttpClient(handler)
-        {
-            BaseAddress = BaseUri
-        };
-
-        client.DefaultRequestHeaders.UserAgent.Clear();
-        if (!string.IsNullOrWhiteSpace(userAgent))
-        {
-            client.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
-        }
-        else
-        {
-            client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36");
-        }
-
-        client.DefaultRequestHeaders.Accept.Clear();
-        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("text/html"));
-        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/xhtml+xml"));
-        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/xml", 0.9));
-        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*", 0.8));
-        client.DefaultRequestHeaders.AcceptLanguage.ParseAdd("en-US,en;q=0.9");
-        client.DefaultRequestHeaders.TryAddWithoutValidation("Accept-Encoding", "gzip, deflate, br");
-        client.DefaultRequestHeaders.Connection.Add("keep-alive");
-
-        client.DefaultRequestHeaders.TryAddWithoutValidation("sec-fetch-dest", "document");
-        client.DefaultRequestHeaders.TryAddWithoutValidation("sec-fetch-mode", "navigate");
-        client.DefaultRequestHeaders.TryAddWithoutValidation("sec-fetch-site", "none");
-        client.DefaultRequestHeaders.TryAddWithoutValidation("sec-fetch-user", "?1");
-        client.DefaultRequestHeaders.TryAddWithoutValidation("upgrade-insecure-requests", "1");
-        client.DefaultRequestHeaders.TryAddWithoutValidation("Priority", "u=0, i");
-    }
-
-    private void SetNavigationHeaders(HttpRequestHeaders headers, string site = "none", string? referrer = null)
-    {
-        headers.Accept.Clear();
-        headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/html"));
-        headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/xhtml+xml"));
-        headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/xml", 0.9));
-        headers.Accept.Add(new MediaTypeWithQualityHeaderValue("image/avif"));
-        headers.Accept.Add(new MediaTypeWithQualityHeaderValue("image/webp"));
-        headers.Accept.Add(new MediaTypeWithQualityHeaderValue("image/apng"));
-        headers.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*", 0.8));
-
-        headers.TryAddWithoutValidation("sec-fetch-dest", "document");
-        headers.TryAddWithoutValidation("sec-fetch-mode", "navigate");
-        headers.TryAddWithoutValidation("sec-fetch-site", site);
-        headers.TryAddWithoutValidation("sec-fetch-user", "?1");
-        headers.TryAddWithoutValidation("upgrade-insecure-requests", "1");
-
-        if (headers.Contains("Priority")) headers.Remove("Priority");
-        headers.TryAddWithoutValidation("Priority", "u=0, i");
-
-        if (referrer != null)
-        {
-            headers.Referrer = new Uri(referrer);
-        }
-    }
-
     public async Task Authenticate(string username, string password)
     {
-        this.username = username;
+        _username = username;
 
         if (HasAuthenticatedSession())
         {
@@ -196,58 +148,74 @@ public class LetterboxdApi
         {
             SetNavigationHeaders(signInRequest.Headers);
 
-            using (var signInResponse = await client.SendAsync(signInRequest).ConfigureAwait(false))
+            using (var signInResponse = await _client.SendAsync(signInRequest).ConfigureAwait(false))
             {
                 if (signInResponse.StatusCode == HttpStatusCode.Forbidden)
                 {
-                    if (cookieContainer.GetCookies(BaseUri).Cast<Cookie>().Any(c => c.Name.Equals("cf_clearance", StringComparison.OrdinalIgnoreCase)))
+                    if (_cookieContainer.GetCookies(BaseUri).Cast<Cookie>().Any(c => c.Name.Equals("cf_clearance", StringComparison.OrdinalIgnoreCase)))
                     {
                         await Task.Delay(1500).ConfigureAwait(false);
                         using var warmup = new HttpRequestMessage(HttpMethod.Get, "/");
                         SetNavigationHeaders(warmup.Headers);
-                        using var _ = await client.SendAsync(warmup).ConfigureAwait(false);
+                        using var unused = await _client.SendAsync(warmup).ConfigureAwait(false);
 
                         using var retryReq = new HttpRequestMessage(HttpMethod.Get, "/sign-in/");
                         SetNavigationHeaders(retryReq.Headers);
-                        using var retryRes = await client.SendAsync(retryReq).ConfigureAwait(false);
+                        using var retryRes = await _client.SendAsync(retryReq).ConfigureAwait(false);
                         if (retryRes.StatusCode == HttpStatusCode.Forbidden)
                         {
                             var rbody = await retryRes.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            if (rbody.Length > 300) rbody = rbody.Substring(0, 300);
-                            throw new Exception("Letterboxd returned 403 on /sign-in/ even after using provided Cloudflare cookies. Body: " + rbody);
+                            if (rbody.Length > 300)
+                            {
+                                rbody = rbody.Substring(0, 300);
+                            }
+
+                            throw new InvalidOperationException("Letterboxd returned 403 on /sign-in/ even after using provided Cloudflare cookies. Body: " + rbody);
                         }
 
                         var retryHtml = await retryRes.Content.ReadAsStringAsync().ConfigureAwait(false);
                         var csrfFromRetry = ExtractHiddenInput(retryHtml, "__csrf");
                         if (string.IsNullOrWhiteSpace(csrfFromRetry))
-                            throw new Exception("Could not find __csrf token on /sign-in/ after retry.");
-                        this.csrf = csrfFromRetry;
+                        {
+                            throw new InvalidOperationException("Could not find __csrf token on /sign-in/ after retry.");
+                        }
+
+                        _csrf = csrfFromRetry;
                         goto AfterSignIn;
                     }
 
                     var body = await signInResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
-                    if (body.Length > 300) body = body.Substring(0, 300);
-                    throw new Exception("Letterboxd returned 403 on /sign-in/. Body: " + body);
+                    if (body.Length > 300)
+                    {
+                        body = body.Substring(0, 300);
+                    }
+
+                    throw new InvalidOperationException("Letterboxd returned 403 on /sign-in/. Body: " + body);
                 }
 
                 if (signInResponse.StatusCode != HttpStatusCode.OK)
                 {
                     var body = await signInResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
-                    if (body.Length > 300) body = body.Substring(0, 300);
-                    throw new Exception($"Letterboxd returned {(int)signInResponse.StatusCode} on /sign-in/. Body: " + body);
+                    if (body.Length > 300)
+                    {
+                        body = body.Substring(0, 300);
+                    }
+
+                    throw new InvalidOperationException($"Letterboxd returned {(int)signInResponse.StatusCode} on /sign-in/. Body: " + body);
                 }
 
                 var signInHtml = await signInResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
                 var csrfFromSignIn = ExtractHiddenInput(signInHtml, "__csrf");
                 if (string.IsNullOrWhiteSpace(csrfFromSignIn))
                 {
-                    throw new Exception("Could not find __csrf token on /sign-in/ (login flow likely changed).");
+                    throw new InvalidOperationException("Could not find __csrf token on /sign-in/ (login flow likely changed).");
                 }
 
-                this.csrf = csrfFromSignIn;
+                _csrf = csrfFromSignIn;
             }
         }
-        AfterSignIn:;
+
+    AfterSignIn:
 
         await Task.Delay(3000 + Random.Shared.Next(4000)).ConfigureAwait(false);
         using (var loginRequest = new HttpRequestMessage(HttpMethod.Post, "/user/login.do"))
@@ -272,25 +240,33 @@ public class LetterboxdApi
             {
                 { "username", username },
                 { "password", password },
-                { "__csrf", this.csrf },
+                { "__csrf", _csrf },
                 { "remember", "true" },
-                { "authenticationCode", "" }
+                { "authenticationCode", string.Empty }
             });
 
-            using (var loginResponse = await client.SendAsync(loginRequest).ConfigureAwait(false))
+            using (var loginResponse = await _client.SendAsync(loginRequest).ConfigureAwait(false))
             {
                 if (loginResponse.StatusCode == HttpStatusCode.Forbidden)
                 {
                     var body = await loginResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
-                    if (body.Length > 300) body = body.Substring(0, 300);
-                    throw new Exception("Letterboxd returned 403 during login. Body: " + body);
+                    if (body.Length > 300)
+                    {
+                        body = body.Substring(0, 300);
+                    }
+
+                    throw new InvalidOperationException("Letterboxd returned 403 during login. Body: " + body);
                 }
 
                 if (!loginResponse.IsSuccessStatusCode)
                 {
                     var body = await loginResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
-                    if (body.Length > 300) body = body.Substring(0, 300);
-                    throw new Exception($"Letterboxd returned {(int)loginResponse.StatusCode} during login. Body: " + body);
+                    if (body.Length > 300)
+                    {
+                        body = body.Substring(0, 300);
+                    }
+
+                    throw new InvalidOperationException($"Letterboxd returned {(int)loginResponse.StatusCode} during login. Body: " + body);
                 }
 
                 var loginBody = await loginResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
@@ -304,10 +280,14 @@ public class LetterboxdApi
                         {
                             var sb = new StringBuilder();
                             foreach (var m in msgsEl.EnumerateArray())
+                            {
                                 sb.Append(m.GetString()).Append(' ');
+                            }
+
                             msg = sb.ToString().Trim();
                         }
-                        throw new Exception("Letterboxd login error: " + msg);
+
+                        throw new InvalidOperationException("Letterboxd login error: " + msg);
                     }
                 }
             }
@@ -326,20 +306,28 @@ public class LetterboxdApi
         {
             SetNavigationHeaders(searchRequest.Headers, "same-origin");
 
-            using (var res = await client.SendAsync(searchRequest).ConfigureAwait(false))
+            using (var res = await _client.SendAsync(searchRequest).ConfigureAwait(false))
             {
                 if (res.StatusCode == HttpStatusCode.Forbidden)
                 {
                     var body = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
-                    if (body.Length > 300) body = body.Substring(0, 300);
-                    throw new Exception($"TMDB lookup returned 403 (Forbidden) for https://letterboxd.com/tmdb/{tmdbid}. Body: " + body);
+                    if (body.Length > 300)
+                    {
+                        body = body.Substring(0, 300);
+                    }
+
+                    throw new InvalidOperationException($"TMDB lookup returned 403 (Forbidden) for https://letterboxd.com/tmdb/{tmdbid}. Body: " + body);
                 }
 
                 if (!res.IsSuccessStatusCode)
                 {
                     var body = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
-                    if (body.Length > 300) body = body.Substring(0, 300);
-                    throw new Exception($"TMDB lookup returned {(int)res.StatusCode} for https://letterboxd.com/tmdb/{tmdbid}. Body: " + body);
+                    if (body.Length > 300)
+                    {
+                        body = body.Substring(0, 300);
+                    }
+
+                    throw new InvalidOperationException($"TMDB lookup returned {(int)res.StatusCode} for https://letterboxd.com/tmdb/{tmdbid}. Body: " + body);
                 }
 
                 var html = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
@@ -356,33 +344,41 @@ public class LetterboxdApi
                     var href = a?.GetAttributeValue("href", string.Empty) ?? string.Empty;
 
                     if (!string.IsNullOrWhiteSpace(href))
-                        filmUrl = href.StartsWith("/") ? "https://letterboxd.com" + href : href;
+                    {
+                        filmUrl = href.StartsWith('/') ? "https://letterboxd.com" + href : href;
+                    }
                 }
 
                 if (string.IsNullOrWhiteSpace(filmUrl))
                 {
                     var finalUri = res?.RequestMessage?.RequestUri?.ToString() ?? string.Empty;
-                    throw new Exception($"The search returned no results (Could not resolve film URL from TMDB page). FinalUrl='{finalUri}'");
+                    throw new InvalidOperationException($"The search returned no results (Could not resolve film URL from TMDB page). FinalUrl='{finalUri}'");
                 }
 
                 var filmUri = new Uri(filmUrl, UriKind.Absolute);
                 var segments = filmUri.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
 
                 if (segments.Length < 2 || !segments[0].Equals("film", StringComparison.OrdinalIgnoreCase))
-                    throw new Exception($"TMDB page resolved to non-film URL: '{filmUrl}'");
+                {
+                    throw new InvalidOperationException($"TMDB page resolved to non-film URL: '{filmUrl}'");
+                }
 
                 string filmSlug = segments[1];
 
                 using (var filmRequest = new HttpRequestMessage(HttpMethod.Get, $"/film/{filmSlug}/"))
                 {
                     SetNavigationHeaders(filmRequest.Headers, "same-origin", $"https://letterboxd.com/tmdb/{tmdbid}");
-                    using (var filmRes = await client.SendAsync(filmRequest).ConfigureAwait(false))
+                    using (var filmRes = await _client.SendAsync(filmRequest).ConfigureAwait(false))
                     {
                         if (!filmRes.IsSuccessStatusCode)
                         {
                             var body = await filmRes.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            if (body.Length > 300) body = body.Substring(0, 300);
-                            throw new Exception($"Film page lookup returned {(int)filmRes.StatusCode} for https://letterboxd.com/film/{filmSlug}/. Body: " + body);
+                            if (body.Length > 300)
+                            {
+                                body = body.Substring(0, 300);
+                            }
+
+                            throw new InvalidOperationException($"Film page lookup returned {(int)filmRes.StatusCode} for https://letterboxd.com/film/{filmSlug}/. Body: " + body);
                         }
 
                         var filmHtml = await filmRes.Content.ReadAsStringAsync().ConfigureAwait(false);
@@ -395,12 +391,16 @@ public class LetterboxdApi
                             filmDoc.DocumentNode.SelectSingleNode("//div[@data-film-id]");
 
                         if (elForId == null)
-                            throw new Exception("The search returned no results (No html element found to get letterboxd filmId)");
+                        {
+                            throw new InvalidOperationException("The search returned no results (No html element found to get letterboxd filmId)");
+                        }
 
                         string filmId = elForId.GetAttributeValue("data-film-id", string.Empty);
 
                         if (string.IsNullOrEmpty(filmId))
-                            throw new Exception("The search returned no results (data-film-id attribute is empty)");
+                        {
+                            throw new InvalidOperationException("The search returned no results (data-film-id attribute is empty)");
+                        }
 
                         return new FilmResult(filmSlug, filmId);
                     }
@@ -419,13 +419,17 @@ public class LetterboxdApi
         {
             SetNavigationHeaders(searchRequest.Headers, "same-origin");
 
-            using (var res = await client.SendAsync(searchRequest).ConfigureAwait(false))
+            using (var res = await _client.SendAsync(searchRequest).ConfigureAwait(false))
             {
                 if (!res.IsSuccessStatusCode)
                 {
                     var body = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
-                    if (body.Length > 300) body = body.Substring(0, 300);
-                    throw new Exception($"IMDb lookup returned {(int)res.StatusCode} for https://letterboxd.com/imdb/{imdbid}. Body: " + body);
+                    if (body.Length > 300)
+                    {
+                        body = body.Substring(0, 300);
+                    }
+
+                    throw new InvalidOperationException($"IMDb lookup returned {(int)res.StatusCode} for https://letterboxd.com/imdb/{imdbid}. Body: " + body);
                 }
 
                 var html = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
@@ -442,45 +446,28 @@ public class LetterboxdApi
                     var href = a?.GetAttributeValue("href", string.Empty) ?? string.Empty;
 
                     if (!string.IsNullOrWhiteSpace(href))
-                        filmUrl = href.StartsWith("/") ? "https://letterboxd.com" + href : href;
+                    {
+                        filmUrl = href.StartsWith('/') ? "https://letterboxd.com" + href : href;
+                    }
                 }
 
                 if (string.IsNullOrWhiteSpace(filmUrl))
-                    throw new Exception($"The search returned no results (Could not resolve film URL from IMDb page).");
+                {
+                    throw new InvalidOperationException($"The search returned no results (Could not resolve film URL from IMDb page).");
+                }
 
                 var filmUri = new Uri(filmUrl, UriKind.Absolute);
                 var segments = filmUri.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
 
                 if (segments.Length < 2 || !segments[0].Equals("film", StringComparison.OrdinalIgnoreCase))
-                    throw new Exception($"IMDb page resolved to non-film URL: '{filmUrl}'");
+                {
+                    throw new InvalidOperationException($"IMDb page resolved to non-film URL: '{filmUrl}'");
+                }
 
                 string filmSlug = segments[1];
 
                 // Reuse the same logic to get filmId from slug
                 return await SearchFilmBySlug(filmSlug).ConfigureAwait(false);
-            }
-        }
-    }
-
-    private async Task<FilmResult> SearchFilmBySlug(string filmSlug)
-    {
-        using (var filmRequest = new HttpRequestMessage(HttpMethod.Get, $"/film/{filmSlug}/"))
-        {
-            SetNavigationHeaders(filmRequest.Headers, "same-origin");
-            using (var filmRes = await client.SendAsync(filmRequest).ConfigureAwait(false))
-            {
-                if (!filmRes.IsSuccessStatusCode)
-                    throw new Exception($"Film page lookup failed for {filmSlug}");
-
-                var filmHtml = await filmRes.Content.ReadAsStringAsync().ConfigureAwait(false);
-                var filmDoc = new HtmlDocument();
-                filmDoc.LoadHtml(filmHtml);
-
-                HtmlNode? elForId = filmDoc.DocumentNode.SelectSingleNode("//div[@data-film-id]");
-                if (elForId == null) throw new Exception("No data-film-id found");
-
-                string filmId = elForId.GetAttributeValue("data-film-id", string.Empty);
-                return new FilmResult(filmSlug, filmId);
             }
         }
     }
@@ -511,7 +498,7 @@ public class LetterboxdApi
 
                 request.Content = new FormUrlEncodedContent(new Dictionary<string, string>
                 {
-                    { "__csrf", this.csrf },
+                    { "__csrf", _csrf },
                     { "json", "true" },
                     { "viewingId", string.Empty },
                     { "filmId", filmId },
@@ -523,36 +510,48 @@ public class LetterboxdApi
                     { "liked", liked.ToString().ToLowerInvariant() }
                 });
 
-                using (var response = await client.SendAsync(request).ConfigureAwait(false))
+                using (var response = await _client.SendAsync(request).ConfigureAwait(false))
                 {
                     var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                     if (response.StatusCode != HttpStatusCode.OK)
                     {
-                        if (response.StatusCode == HttpStatusCode.Forbidden) throw new Exception("403 Forbidden during diary entry");
-                        throw new Exception($"Letterboxd returned {(int)response.StatusCode}");
+                        if (response.StatusCode == HttpStatusCode.Forbidden)
+                        {
+                            throw new InvalidOperationException("403 Forbidden during diary entry");
+                        }
+
+                        throw new InvalidOperationException($"Letterboxd returned {(int)response.StatusCode}");
                     }
 
                     using (JsonDocument doc = JsonDocument.Parse(body))
                     {
                         var json = doc.RootElement;
-                        if (SuccessOperation(json, out string message)) return;
+                        if (SuccessOperation(json, out string message))
+                        {
+                            return;
+                        }
 
-                        if (attempt == 0 && message.Contains("expired", StringComparison.OrdinalIgnoreCase)) continue;
-                        throw new Exception(message);
+                        if (attempt == 0 && message.Contains("expired", StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        throw new InvalidOperationException(message);
                     }
                 }
             }
         }
-        throw new Exception("Failed to submit diary entry after retry.");
+
+        throw new InvalidOperationException("Failed to submit diary entry after retry.");
     }
 
     public async Task<DateTime?> GetDateLastLog(string filmSlug)
     {
-        string url = $"/{this.username}/film/{filmSlug}/diary/";
+        string url = $"/{_username}/film/{filmSlug}/diary/";
 
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         SetNavigationHeaders(request.Headers, "same-origin");
-        using var response = await client.SendAsync(request).ConfigureAwait(false);
+        using var response = await _client.SendAsync(request).ConfigureAwait(false);
         var responseHtml = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
 
         var htmlDoc = new HtmlDocument();
@@ -578,7 +577,9 @@ public class LetterboxdApi
                 {
                     var dateString = $"{day} {month} {year}";
                     if (DateTime.TryParse(dateString, out DateTime parsedDate))
+                    {
                         lstDates.Add(parsedDate);
+                    }
                 }
             }
         }
@@ -586,22 +587,13 @@ public class LetterboxdApi
         return lstDates.Count > 0 ? lstDates.Max() : null;
     }
 
-    private bool SuccessOperation(JsonElement json, out string message)
+    protected virtual void Dispose(bool disposing)
     {
-        message = string.Empty;
-        if (json.TryGetProperty("messages", out JsonElement messagesElement))
+        if (disposing)
         {
-            StringBuilder sb = new StringBuilder();
-            foreach (var i in messagesElement.EnumerateArray()) sb.Append(i.GetString());
-            message = sb.ToString();
+            _client?.Dispose();
+            _handler?.Dispose();
         }
-
-        if (json.TryGetProperty("result", out JsonElement statusElement))
-        {
-            if (statusElement.ValueKind == JsonValueKind.String) return statusElement.GetString() != "error";
-            if (statusElement.ValueKind == JsonValueKind.True) return true;
-        }
-        return false;
     }
 
     private static string? ExtractHiddenInput(string html, string name)
@@ -610,16 +602,137 @@ public class LetterboxdApi
         var m = Regex.Match(html, pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
         return m.Success ? m.Groups[1].Value : null;
     }
-}
 
-public class FilmResult
-{
-    public string filmSlug { get; set; }
-    public string filmId { get; set; }
-
-    public FilmResult(string slug, string id)
+    private bool HasAuthenticatedSession()
     {
-        filmSlug = slug;
-        filmId = id;
+        var cookies = _cookieContainer.GetCookies(BaseUri);
+        return !string.IsNullOrWhiteSpace(cookies["letterboxd.user.CURRENT"]?.Value);
+    }
+
+    private async Task RefreshCsrfFromFilmPageAsync(string filmSlug)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/film/{filmSlug}/");
+        SetNavigationHeaders(request.Headers, "same-origin");
+        using var response = await _client.SendAsync(request).ConfigureAwait(false);
+        var html = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+
+        var fresh = ExtractHiddenInput(html, "__csrf");
+        if (string.IsNullOrWhiteSpace(fresh))
+        {
+            throw new InvalidOperationException($"Could not extract __csrf from film page /film/{filmSlug}/");
+        }
+
+        _csrf = fresh!;
+    }
+
+    private string GetCsrfFromCookie()
+    {
+        var cookies = _cookieContainer.GetCookies(BaseUri);
+        return cookies["com.xk72.webparts.csrf"]?.Value ?? string.Empty;
+    }
+
+    private async Task RefreshCsrfCookieAsync()
+    {
+        using (var request = new HttpRequestMessage(HttpMethod.Get, "/"))
+        {
+            SetNavigationHeaders(request.Headers);
+            using var unused = await _client.SendAsync(request).ConfigureAwait(false);
+        }
+
+        var token = GetCsrfFromCookie();
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            throw new InvalidOperationException("Could not read CSRF cookie 'com.xk72.webparts.csrf' after refreshing.");
+        }
+
+        _csrf = token;
+    }
+
+    private void SetNavigationHeaders(HttpRequestHeaders headers, string site = "none", string? referrer = null)
+    {
+        headers.Accept.Clear();
+        headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/html"));
+        headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/xhtml+xml"));
+        headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/xml", 0.9));
+        headers.Accept.Add(new MediaTypeWithQualityHeaderValue("image/avif"));
+        headers.Accept.Add(new MediaTypeWithQualityHeaderValue("image/webp"));
+        headers.Accept.Add(new MediaTypeWithQualityHeaderValue("image/apng"));
+        headers.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*", 0.8));
+
+        headers.TryAddWithoutValidation("sec-fetch-dest", "document");
+        headers.TryAddWithoutValidation("sec-fetch-mode", "navigate");
+        headers.TryAddWithoutValidation("sec-fetch-site", site);
+        headers.TryAddWithoutValidation("sec-fetch-user", "?1");
+        headers.TryAddWithoutValidation("upgrade-insecure-requests", "1");
+
+        if (headers.Contains("Priority"))
+        {
+            headers.Remove("Priority");
+        }
+
+        headers.TryAddWithoutValidation("Priority", "u=0, i");
+
+        if (referrer != null)
+        {
+            headers.Referrer = new Uri(referrer);
+        }
+    }
+
+    private async Task<FilmResult> SearchFilmBySlug(string filmSlug)
+    {
+        using (var filmRequest = new HttpRequestMessage(HttpMethod.Get, $"/film/{filmSlug}/"))
+        {
+            SetNavigationHeaders(filmRequest.Headers, "same-origin");
+            using (var filmRes = await _client.SendAsync(filmRequest).ConfigureAwait(false))
+            {
+                if (!filmRes.IsSuccessStatusCode)
+                {
+                    throw new InvalidOperationException($"Film page lookup failed for {filmSlug}");
+                }
+
+                var filmHtml = await filmRes.Content.ReadAsStringAsync().ConfigureAwait(false);
+                var filmDoc = new HtmlDocument();
+                filmDoc.LoadHtml(filmHtml);
+
+                HtmlNode? elForId = filmDoc.DocumentNode.SelectSingleNode("//div[@data-film-id]");
+                if (elForId == null)
+                {
+                    throw new InvalidOperationException("No data-film-id found");
+                }
+
+                string filmId = elForId.GetAttributeValue("data-film-id", string.Empty);
+                return new FilmResult(filmSlug, filmId);
+            }
+        }
+    }
+
+    private bool SuccessOperation(JsonElement json, out string message)
+    {
+        message = string.Empty;
+        if (json.TryGetProperty("messages", out JsonElement messagesElement))
+        {
+            StringBuilder sb = new StringBuilder();
+            foreach (var i in messagesElement.EnumerateArray())
+            {
+                sb.Append(i.GetString());
+            }
+
+            message = sb.ToString();
+        }
+
+        if (json.TryGetProperty("result", out JsonElement statusElement))
+        {
+            if (statusElement.ValueKind == JsonValueKind.String)
+            {
+                return statusElement.GetString() != "error";
+            }
+
+            if (statusElement.ValueKind == JsonValueKind.True)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

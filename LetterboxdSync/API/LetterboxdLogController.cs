@@ -10,7 +10,7 @@ namespace LetterboxdLog.API;
 
 [ApiController]
 [Produces(MediaTypeNames.Application.Json)]
-//[Authorize(Policy = Policies.SubtitleManagement)]
+// [Authorize(Policy = Policies.SubtitleManagement)]
 public class LetterboxdLogController : ControllerBase
 {
     [HttpPost("Jellyfin.Plugin.LetterboxdLog/Authenticate")]
@@ -23,7 +23,7 @@ public class LetterboxdLogController : ControllerBase
         try
         {
             api.SetRawCookies(body.CookiesRaw ?? body.Cookie);
-            await api.Authenticate(body.UserLetterboxd, body.PasswordLetterboxd).ConfigureAwait(false);
+            await api.Authenticate(body.UserLetterboxd ?? string.Empty, body.PasswordLetterboxd ?? string.Empty).ConfigureAwait(false);
             return Ok();
         }
         catch (Exception ex)
