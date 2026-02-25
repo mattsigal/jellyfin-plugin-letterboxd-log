@@ -140,14 +140,9 @@ public class LetterboxdLogSyncTask : IScheduledTask
                             {
                                  _logger.LogInformation("Rewatch detected for {Movie}: LastPlayed ({Played}) > SkipDate ({Skip}). Resume syncing.", title, viewingDate.Value.Date, skipDate.Date);
 
-                                 // Remove Skip Tag
-                                 movieTags.Remove(skipTag);
-                                 // Remove .ignore tag if present (User requirement: delete .ignore on rewatch)
-                                 if (hasIgnore)
-                                 {
-                                     movieTags.Remove(".ignore"); // Remove all instances? Case insensitive? List ref might be tricky.
-                                     movieTags.RemoveAll(t => t.Equals(".ignore", StringComparison.OrdinalIgnoreCase));
-                                 }
+                                 // Remove Skip Tag and .ignore robustly
+                                 movieTags.RemoveAll(t => t.StartsWith("LetterboxdSkip:", StringComparison.OrdinalIgnoreCase));
+                                 movieTags.RemoveAll(t => t.Equals(".ignore", StringComparison.OrdinalIgnoreCase));
 
                                  // Commit changes to Metadata
                                  movie.Tags = movieTags.ToArray();

@@ -505,7 +505,7 @@ public class LetterboxdApi : IDisposable
                     { "specifiedDate", "true" },
                     { "viewingDateStr", viewingDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) },
                     { "review", string.Empty },
-                    { "tags", tags.Length > 0 ? $"[{string.Join(",", tags)}]" : string.Empty },
+                    { "tags", string.Join(", ", tags) },
                     { "rating", "0" },
                     { "liked", liked.ToString().ToLowerInvariant() }
                 });
@@ -517,10 +517,10 @@ public class LetterboxdApi : IDisposable
                     {
                         if (response.StatusCode == HttpStatusCode.Forbidden)
                         {
-                            throw new InvalidOperationException("403 Forbidden during diary entry");
+                            throw new InvalidOperationException("403 Forbidden during diary entry: " + body);
                         }
 
-                        throw new InvalidOperationException($"Letterboxd returned {(int)response.StatusCode}");
+                        throw new InvalidOperationException($"Letterboxd returned {(int)response.StatusCode}: {body}");
                     }
 
                     using (JsonDocument doc = JsonDocument.Parse(body))
