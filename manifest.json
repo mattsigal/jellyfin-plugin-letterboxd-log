@@ -8,6 +8,14 @@
     "category": "Metadata",
     "versions": [
       {
+        "version": "1.10.9.0",
+        "changelog": "- fix(manifest): correct asset filename discrepancy and standardize workflow naming (fc3f645)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.10.9/LetterboxdLog-v1.10.9.zip",
+        "checksum": "4c70c2c5c35add94121adc5e398e8bb6",
+        "timestamp": "2026-02-25T15:38:50Z"
+      },
+      {
         "version": "1.10.8.0",
         "changelog": "",
         "targetAbi": "10.11.0.0",
