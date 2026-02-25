@@ -124,16 +124,20 @@ jobs:
                   CHECKSUM=$(md5sum publish/${{ github.event.repository.name }}-v${{ needs.build.outputs.release-version }}.zip | awk '{print $1}')
                   SOURCE_URL="https://github.com/${{ github.repository_owner }}/${{ github.event.repository.name }}/releases/download/v${{ needs.build.outputs.release-version }}/${{ github.event.repository.name }}-v${{ needs.build.outputs.release-version }}.zip"
 
-                  NEW_ENTRY="{
-                    \"version\": \"${{ needs.build.outputs.release-version }}.0\",
-                    \"changelog\": \"${{ needs.build.outputs.changelog }}\",
-                    \"targetAbi\": \"${TARGETABI}\",
-                    \"sourceUrl\": \"${SOURCE_URL}\",
-                    \"checksum\": \"${CHECKSUM}\",
-                    \"timestamp\": \"${TIMESTAMP}\"
-                  }"
-
-                  jq ".[0].versions = [${NEW_ENTRY}] + .[0].versions" manifest.json > manifest.json.temp && mv manifest.json.temp manifest.json
+                  jq --arg version "${{ needs.build.outputs.release-version }}.0" \
+                     --arg changelog "${{ needs.build.outputs.changelog }}" \
+                     --arg targetAbi "$TARGETABI" \
+                     --arg sourceUrl "$SOURCE_URL" \
+                     --arg checksum "$CHECKSUM" \
+                     --arg timestamp "$TIMESTAMP" \
+                     '.[0].versions = [{
+                        version: $version,
+                        changelog: $changelog,
+                        targetAbi: $targetAbi,
+                        sourceUrl: $sourceUrl,
+                        checksum: $checksum,
+                        timestamp: $timestamp
+                      }] + .[0].versions' manifest.json > manifest.json.temp && mv manifest.json.temp manifest.json
 
             - name: 'Commit Changes'
               run: |
