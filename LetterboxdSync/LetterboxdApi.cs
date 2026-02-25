@@ -477,7 +477,7 @@ public class LetterboxdApi : IDisposable
         string url = "/s/save-diary-entry";
         DateTime viewingDate = date == null ? DateTime.Now : (DateTime)date;
 
-        for (int attempt = 0; attempt < 2; attempt++)
+        for (int attempt = 0; attempt < 3; attempt++)
         {
             await RefreshCsrfCookieAsync().ConfigureAwait(false);
 
@@ -531,8 +531,9 @@ public class LetterboxdApi : IDisposable
                             return;
                         }
 
-                        if (attempt == 0 && message.Contains("expired", StringComparison.OrdinalIgnoreCase))
+                        if (attempt < 2 && (message.Contains("expired", StringComparison.OrdinalIgnoreCase) || message.Contains("try again", StringComparison.OrdinalIgnoreCase)))
                         {
+                            await Task.Delay((attempt + 1) * 5000 + Random.Shared.Next(3000)).ConfigureAwait(false);
                             continue;
                         }
 
@@ -542,7 +543,7 @@ public class LetterboxdApi : IDisposable
             }
         }
 
-        throw new InvalidOperationException("Failed to submit diary entry after retry.");
+        throw new InvalidOperationException("Failed to submit diary entry after retries.");
     }
 
     public async Task<DateTime?> GetDateLastLog(string filmSlug)
