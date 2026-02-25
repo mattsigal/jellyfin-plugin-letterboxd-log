@@ -2,7 +2,7 @@ name: '🚀 Publish'
 
 on:
     push:
-        branches: 
+        branches:
             - main
             - master
             - jf-10.11
@@ -32,7 +32,7 @@ jobs:
               run: |
                 NPM_CONFIG_PREFIX=$HOME/.npm-global
                 export PATH=$HOME/.npm-global/bin:$PATH
-                
+
                 npm install -g conventional-recommended-bump conventional-changelog-angular semver
 
                 CUR_TAG=$(git describe --tags --abbrev=0 2>&1 || echo "v0.0.0")
@@ -53,7 +53,7 @@ jobs:
                     NEW_VERSION=$(npx semver $NEW_VERSION -i patch 2>&1)
                 done
                 echo "Final NEW_VERSION = $NEW_VERSION"
-                
+
                 CHANGELOG=$(git log $CUR_TAG..HEAD --no-merges --pretty=format:"- %s (%h)")
                 echo "CHANGELOG = $CHANGELOG"
 
@@ -96,7 +96,7 @@ jobs:
     publish:
         name: 'publish v${{needs.build.outputs.release-version}}'
         runs-on: ubuntu-latest
-        environment: prd 
+        environment: prd
         needs: build
         steps:
             - uses: actions/checkout@v4
@@ -115,7 +115,7 @@ jobs:
                 sed "s/<AssemblyVersion>.*<\/AssemblyVersion>/<AssemblyVersion>${{ needs.build.outputs.release-version }}.0<\/AssemblyVersion>/" Directory.Build.props > Directory.Build.props.temp && mv Directory.Build.props.temp Directory.Build.props
                 sed "s/<FileVersion>.*<\/FileVersion>/<FileVersion>${{ needs.build.outputs.release-version }}.0<\/FileVersion>/" Directory.Build.props > Directory.Build.props.temp && mv Directory.Build.props.temp Directory.Build.props
                 sed "s/version: \".*\"/version: \"${{ needs.build.outputs.release-version }}.0\"/" build.yaml  > build.yaml.temp && mv build.yaml.temp build.yaml
-            
+
             - name: 'Update manifest.json'
               run: |
                   TARGETABI="10.11.0.0"
@@ -123,14 +123,14 @@ jobs:
 
                   CHECKSUM=$(md5sum publish/${{ github.event.repository.name }}-v${{ needs.build.outputs.release-version }}.zip | awk '{print $1}')
                   SOURCE_URL="https://github.com/${{ github.repository_owner }}/${{ github.event.repository.name }}/releases/download/v${{ needs.build.outputs.release-version }}/${{ github.event.repository.name }}-v${{ needs.build.outputs.release-version }}.zip"
-  
+
                   NEW_ENTRY="{
-                    "version": \"${{ needs.build.outputs.release-version }}.0\",
-                    "changelog": \"${{needs.build.outputs.changelog}}\",
-                    "targetAbi": \"${TARGETABI}\",
-                    "sourceUrl": \"${SOURCE_URL}\",
-                    "checksum": \"${CHECKSUM}\",
-                    "timestamp": \"${TIMESTAMP}\"
+                    \"version\": \"${{ needs.build.outputs.release-version }}.0\",
+                    \"changelog\": \"${{ needs.build.outputs.changelog }}\",
+                    \"targetAbi\": \"${TARGETABI}\",
+                    \"sourceUrl\": \"${SOURCE_URL}\",
+                    \"checksum\": \"${CHECKSUM}\",
+                    \"timestamp\": \"${TIMESTAMP}\"
                   }"
 
                   jq ".[0].versions = [${NEW_ENTRY}] + .[0].versions" manifest.json > manifest.json.temp && mv manifest.json.temp manifest.json
@@ -139,16 +139,16 @@ jobs:
               run: |
                 git config user.name "GitHub Actions"
                 git config user.email "actions@github.com"
-                
+
                 git add Directory.Build.props build.yaml manifest.json
-                
+
                 git commit -m "chore(release): v${{ needs.build.outputs.release-version }}"
                 git tag v${{ needs.build.outputs.release-version }}
-                
+
                 git pull origin ${{ github.ref_name }} --rebase
                 git push origin ${{ github.ref_name }}
                 git push origin v${{ needs.build.outputs.release-version }}
-            
+
             - name: 'Create Release'
               uses: softprops/action-gh-release@v2
               with:
