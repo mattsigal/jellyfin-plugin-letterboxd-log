@@ -83,15 +83,15 @@ jobs:
             - name: 'Generate Artefacts'
               run: |
                 cd publish
-                zip ${{ github.event.repository.name }}-v${{ steps.ged-version-changelog.outputs.release-version }}.zip \
+                zip LetterboxdLog-v${{ steps.ged-version-changelog.outputs.release-version }}.zip \
                 HtmlAgilityPack.dll \
                 LetterboxdLog.dll
 
             - name: 'Upload Artefacts'
               uses: actions/upload-artifact@v4
               with:
-                name: ${{ github.event.repository.name }}-v${{ steps.ged-version-changelog.outputs.release-version }}
-                path: publish/${{ github.event.repository.name }}-v${{ steps.ged-version-changelog.outputs.release-version }}.zip
+                name: LetterboxdLog-v${{ steps.ged-version-changelog.outputs.release-version }}
+                path: publish/LetterboxdLog-v${{ steps.ged-version-changelog.outputs.release-version }}.zip
 
     publish:
         name: 'publish v${{needs.build.outputs.release-version}}'
@@ -106,7 +106,7 @@ jobs:
 
             - uses: actions/download-artifact@v4
               with:
-                name: ${{ github.event.repository.name }}-v${{ needs.build.outputs.release-version }}
+                name: LetterboxdLog-v${{ needs.build.outputs.release-version }}
                 path: publish
 
             - name: 'Update Directory.Build.props and build.yaml'
@@ -121,8 +121,8 @@ jobs:
                   TARGETABI="10.11.0.0"
                   TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-                  CHECKSUM=$(md5sum publish/${{ github.event.repository.name }}-v${{ needs.build.outputs.release-version }}.zip | awk '{print $1}')
-                  SOURCE_URL="https://github.com/${{ github.repository_owner }}/${{ github.event.repository.name }}/releases/download/v${{ needs.build.outputs.release-version }}/${{ github.event.repository.name }}-v${{ needs.build.outputs.release-version }}.zip"
+                  CHECKSUM=$(md5sum publish/LetterboxdLog-v${{ needs.build.outputs.release-version }}.zip | awk '{print $1}')
+                  SOURCE_URL="https://github.com/${{ github.repository_owner }}/${{ github.event.repository.name }}/releases/download/v${{ needs.build.outputs.release-version }}/LetterboxdLog-v${{ needs.build.outputs.release-version }}.zip"
 
                   jq --arg version "${{ needs.build.outputs.release-version }}.0" \
                      --arg changelog "${{ needs.build.outputs.changelog }}" \
@@ -161,6 +161,6 @@ jobs:
                 body: ${{needs.build.outputs.changelog}}
                 draft: false
                 prerelease: false
-                files: publish/${{ github.event.repository.name }}-v${{ needs.build.outputs.release-version }}.zip
+                files: publish/LetterboxdLog-v${{ needs.build.outputs.release-version }}.zip
               env:
                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
