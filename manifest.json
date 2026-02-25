@@ -8,6 +8,14 @@
     "category": "Metadata",
     "versions": [
       {
+        "version": "1.10.8.0",
+        "changelog": "",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.10.8/jellyfin-plugin-letterboxd-log-v1.10.8.zip",
+        "checksum": "0920e2e648e5f6d0e8fb58a3ee383ac5",
+        "timestamp": "2026-02-25T15:12:41Z"
+      },
+      {
         "version": "1.10.6.0",
         "changelog": "- fix: definitively fix manifest structure and workflow keys (689607b)\n- fix: use jq --arg for robust manifest updates (88bbbd6)\n- fix: correct JSON syntax in publish workflow (d2ba96e)\n- fix: restore and refine logging and rewatch logic v1 (c495441)",
         "targetAbi": "10.11.0.0",
