@@ -1,143 +1,113 @@
 name: '🚀 Publish'
 
 on:
-    push:
-        branches:
-            - main
-            - master
-            - jf-10.11
-        paths-ignore:
-            - 'README.md'
+  push:
+    tags:
+      - 'v*'
 
 permissions:
   contents: write
 
 env:
-    DOTNET_VERSION: '9.0.x'
+  DOTNET_VERSION: '9.0.x'
 
 jobs:
-    build:
-        if: ${{ github.actor != 'github-actions[bot]' }}
-        runs-on: ubuntu-latest
-        outputs:
-            release-version: ${{ steps.ged-version-changelog.outputs.release-version }}
-            changelog: ${{ steps.ged-version-changelog.outputs.changelog }}
-        steps:
-            - uses: actions/checkout@v4
-              with:
-                fetch-depth: 0
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      release-version: ${{ steps.extract-version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-            - name: 'Generate Version and Changelog'
-              id: ged-version-changelog
-              run: |
-                NPM_CONFIG_PREFIX=$HOME/.npm-global
-                export PATH=$HOME/.npm-global/bin:$PATH
+      - name: 'Extract Version'
+        id: extract-version
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG_NAME#v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version: $VERSION"
 
-                npm install -g conventional-recommended-bump conventional-changelog-angular semver
+      - name: 'Setup .NET (${{env.DOTNET_VERSION}})'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{env.DOTNET_VERSION}}
 
-                CUR_TAG=$(git describe --tags --abbrev=0 2>&1 || echo "v0.0.0")
-                echo "CUR_TAG = $CUR_TAG"
-                CUR_VERSION=${CUR_TAG#v}
-                # Remove the 4th part of the version if it exists (e.g., 1.1.2.0 -> 1.1.2)
-                CUR_VERSION_3PART=$(echo $CUR_VERSION | cut -d. -f1-3)
-                echo "CUR_VERSION = $CUR_VERSION (3-part: $CUR_VERSION_3PART)"
+      - name: 'Build project'
+        run: |
+          dotnet restore
+          dotnet publish LetterboxdSync/LetterboxdSync.csproj --configuration Release --output publish
 
-                INCREMENT_LEVEL=$(conventional-recommended-bump -p angular  --tag-prefix "v")
-                echo "INCREMENT_LEVEL = $INCREMENT_LEVEL"
-                NEW_VERSION=$(npx semver $CUR_VERSION_3PART -i $INCREMENT_LEVEL 2>&1)
-                echo "Initial NEW_VERSION = $NEW_VERSION"
+      - name: 'Generate Artefacts'
+        run: |
+          cd publish
+          zip LetterboxdLog-v${{ steps.extract-version.outputs.version }}.zip \
+          HtmlAgilityPack.dll \
+          LetterboxdLog.dll
 
-                # Check for existing tags and increment patch if needed to avoid collisions
-                while git rev-parse "v$NEW_VERSION" >/dev/null 2>&1; do
-                    echo "Tag v$NEW_VERSION already exists. Bump patch."
-                    NEW_VERSION=$(npx semver $NEW_VERSION -i patch 2>&1)
-                done
-                echo "Final NEW_VERSION = $NEW_VERSION"
+      - name: 'Upload Artefacts'
+        uses: actions/upload-artifact@v4
+        with:
+          name: LetterboxdLog-v${{ steps.extract-version.outputs.version }}
+          path: publish/LetterboxdLog-v${{ steps.extract-version.outputs.version }}.zip
 
-                CHANGELOG=$(git log $CUR_TAG..HEAD --no-merges --pretty=format:"- %s (%h)")
-                echo "CHANGELOG = $CHANGELOG"
+  publish:
+    name: 'publish v${{needs.build.outputs.release-version}}'
+    runs-on: ubuntu-latest
+    environment: prd
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
 
-                echo "release-version=$NEW_VERSION" >> $GITHUB_OUTPUT
-                printf "changelog<<EOF\n%s\nEOF\n" "$CHANGELOG" >> $GITHUB_OUTPUT
+      - uses: actions/download-artifact@v4
+        with:
+          name: LetterboxdLog-v${{ needs.build.outputs.release-version }}
+          path: publish
 
-                echo "$CUR_VERSION -> $NEW_VERSION"
-                echo "$CHANGELOG"
+      - name: 'Update manifest.json'
+        run: |
+          TARGETABI="10.11.0.0"
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-            - name: 'Update Directory.Build.props and build.yaml'
-              run: |
-                sed "s/<Version>.*<\/Version>/<Version>${{ steps.ged-version-changelog.outputs.release-version }}.0<\/Version>/" Directory.Build.props > Directory.Build.props.temp && mv Directory.Build.props.temp Directory.Build.props
-                sed "s/<AssemblyVersion>.*<\/AssemblyVersion>/<AssemblyVersion>${{ steps.ged-version-changelog.outputs.release-version }}.0<\/AssemblyVersion>/" Directory.Build.props > Directory.Build.props.temp && mv Directory.Build.props.temp Directory.Build.props
-                sed "s/<FileVersion>.*<\/FileVersion>/<FileVersion>${{ steps.ged-version-changelog.outputs.release-version }}.0<\/FileVersion>/" Directory.Build.props > Directory.Build.props.temp && mv Directory.Build.props.temp Directory.Build.props
-                sed "s/version: \".*\"/version: \"${{ steps.ged-version-changelog.outputs.release-version }}.0\"/" build.yaml  > build.yaml.temp && mv build.yaml.temp build.yaml
+          CHECKSUM=$(md5sum publish/LetterboxdLog-v${{ needs.build.outputs.release-version }}.zip | awk '{print $1}')
+          SOURCE_URL="https://github.com/${{ github.repository_owner }}/${{ github.event.repository.name }}/releases/download/v${{ needs.build.outputs.release-version }}/LetterboxdLog-v${{ needs.build.outputs.release-version }}.zip"
 
-            - name: 'Setup .NET (${{env.DOTNET_VERSION}})'
-              uses: actions/setup-dotnet@v4
-              with:
-                dotnet-version: ${{env.DOTNET_VERSION}}
+          # Use git logs for changelog since the last tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" -n 10)
+          else
+            CHANGELOG=$(git log $PREV_TAG..HEAD --pretty=format:"- %s (%h)")
+          fi
 
-            - name: 'Build project'
-              run: |
-                dotnet restore
-                dotnet publish LetterboxdSync/LetterboxdSync.csproj --configuration Release --output publish
+          jq --arg version "${{ needs.build.outputs.release-version }}" \
+             --arg changelog "$CHANGELOG" \
+             --arg targetAbi "$TARGETABI" \
+             --arg sourceUrl "$SOURCE_URL" \
+             --arg checksum "$CHECKSUM" \
+             --arg timestamp "$TIMESTAMP" \
+             '.[0].versions |= (
+                [{
+                  "version": $version,
+                  "changelog": $changelog,
+                  "targetAbi": $targetAbi,
+                  "sourceUrl": $sourceUrl,
+                  "checksum": $checksum,
+                  "timestamp": $timestamp
+                }] + (map(select(.version != $version)))
+             )' manifest.json > manifest.json.temp && mv manifest.json.temp manifest.json
 
-            - name: 'Generate Artefacts'
-              run: |
-                cd publish
-                zip LetterboxdLog-v${{ steps.ged-version-changelog.outputs.release-version }}.zip \
-                HtmlAgilityPack.dll \
-                LetterboxdLog.dll
-
-            - name: 'Upload Artefacts'
-              uses: actions/upload-artifact@v4
-              with:
-                name: LetterboxdLog-v${{ steps.ged-version-changelog.outputs.release-version }}
-                path: publish/LetterboxdLog-v${{ steps.ged-version-changelog.outputs.release-version }}.zip
-
-    publish:
-        name: 'publish v${{needs.build.outputs.release-version}}'
-        runs-on: ubuntu-latest
-        environment: prd
-        needs: build
-        steps:
-            - uses: actions/checkout@v4
-              with:
-                ref: ${{ github.ref_name }}
-                fetch-depth: 0
-
-            - uses: actions/download-artifact@v4
-              with:
-                name: LetterboxdLog-v${{ needs.build.outputs.release-version }}
-                path: publish
-
-            - name: 'Update Directory.Build.props and build.yaml'
-              run: |
-                sed "s/<Version>.*<\/Version>/<Version>${{ needs.build.outputs.release-version }}.0<\/Version>/" Directory.Build.props > Directory.Build.props.temp && mv Directory.Build.props.temp Directory.Build.props
-                sed "s/<AssemblyVersion>.*<\/AssemblyVersion>/<AssemblyVersion>${{ needs.build.outputs.release-version }}.0<\/AssemblyVersion>/" Directory.Build.props > Directory.Build.props.temp && mv Directory.Build.props.temp Directory.Build.props
-                sed "s/<FileVersion>.*<\/FileVersion>/<FileVersion>${{ needs.build.outputs.release-version }}.0<\/FileVersion>/" Directory.Build.props > Directory.Build.props.temp && mv Directory.Build.props.temp Directory.Build.props
-                sed "s/version: \".*\"/version: \"${{ needs.build.outputs.release-version }}.0\"/" build.yaml  > build.yaml.temp && mv build.yaml.temp build.yaml
-
-            - name: 'Update manifest.json'
-              run: |
-                  TARGETABI="10.11.0.0"
-                  TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-
-                  CHECKSUM=$(md5sum publish/LetterboxdLog-v${{ needs.build.outputs.release-version }}.zip | awk '{print $1}')
-                  SOURCE_URL="https://github.com/${{ github.repository_owner }}/${{ github.event.repository.name }}/releases/download/v${{ needs.build.outputs.release-version }}/LetterboxdLog-v${{ needs.build.outputs.release-version }}.zip"
-
-                  jq --arg version "${{ needs.build.outputs.release-version }}.0" \
-                     --arg changelog "${{ needs.build.outputs.changelog }}" \
-                     --arg targetAbi "$TARGETABI" \
-                     --arg sourceUrl "$SOURCE_URL" \
-                     --arg checksum "$CHECKSUM" \
-                     --arg timestamp "$TIMESTAMP" \
-                     '.[0].versions = [{
-                        "version": $version,
-                        "changelog": $changelog,
-                        "targetAbi": $targetAbi,
-                        "sourceUrl": $sourceUrl,
-                        "checksum": $checksum,
-                        "timestamp": $timestamp
-                      }] + .[0].versions' manifest.json > manifest.json.temp && mv manifest.json.temp manifest.json
+      - name: 'Commit Changes'
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add manifest.json
+          git commit -m "chore(release): manifest update v${{ needs.build.outputs.release-version }}"
+          git push origin ${{ github.ref_name }}
 
             - name: 'Commit Changes'
               run: |
