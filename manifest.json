@@ -9,6 +9,14 @@
     "versions": [
       {
         "version": "1.11.0.0",
+        "changelog": "- feat: fix mass-rating bug and enforce default 24-hour sync window v1.11.0.0 (e5c4bb8)\n- chore: trigger fresh release v1.10.9 to resolve manifest sync issues (db98b58)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.11.0/LetterboxdLog-v1.11.0.zip",
+        "checksum": "e51d4314ae6473a2035fc877fa6b3e72",
+        "timestamp": "2026-02-26T06:21:12Z"
+      },
+      {
+        "version": "1.11.0.0",
         "changelog": "- fix: mass-rating bug (omit rating by default)\n- feat: enforce default 24-hour sync window to prevent mass-syncing history",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.11.0/LetterboxdLog-v1.11.0.zip",
