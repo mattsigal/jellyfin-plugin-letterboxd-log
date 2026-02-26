@@ -8,8 +8,15 @@
     "category": "Metadata",
     "versions": [
       {
+        "version": "1.11.4.0",
+        "changelog": "- fix: definitively fix settings persistence for all environments\n- fix: resolve StyleCop build warnings and arithmetic precedence issues",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.11.4/LetterboxdLog-v1.11.4.zip",
+        "timestamp": "2026-02-26T15:58:00Z"
+      },
+      {
         "version": "1.11.3.0",
-        "changelog": "- fix: definitively fix settings persistence by adding missing collection setter",
+        "changelog": "- fix: settings persistence (missing collection setter)",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.11.3/LetterboxdLog-v1.11.3.zip",
         "timestamp": "2026-02-26T15:55:00Z"

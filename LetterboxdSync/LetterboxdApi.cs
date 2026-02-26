@@ -552,7 +552,7 @@ public class LetterboxdApi : IDisposable
 
                         if (attempt < 2 && (message.Contains("expired", StringComparison.OrdinalIgnoreCase) || message.Contains("try again", StringComparison.OrdinalIgnoreCase)))
                         {
-                            await Task.Delay((attempt + 1) * 5000 + Random.Shared.Next(3000)).ConfigureAwait(false);
+                            await Task.Delay(((attempt + 1) * 5000) + Random.Shared.Next(3000)).ConfigureAwait(false);
                             continue;
                         }
 
