@@ -311,6 +311,27 @@ public class LetterboxdApi : IDisposable
                 if (res.StatusCode == HttpStatusCode.Forbidden)
                 {
                     var body = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    // Check if it's a Cloudflare "Just a moment" page
+                    if (body.Contains("Just a moment", StringComparison.OrdinalIgnoreCase) || body.Contains("cloudflare", StringComparison.OrdinalIgnoreCase))
+                    {
+                        await Task.Delay(2000).ConfigureAwait(false);
+                        // Refresh CSRF/cookies by hitting the homepage
+                        using var warmup = new HttpRequestMessage(HttpMethod.Get, "/");
+                        SetNavigationHeaders(warmup.Headers);
+                        using var warmupRes = await _client.SendAsync(warmup).ConfigureAwait(false);
+
+                        // Retry the TMDB lookup
+                        using var retryRequest = new HttpRequestMessage(HttpMethod.Get, tmdbPath);
+                        SetNavigationHeaders(retryRequest.Headers, "same-origin");
+                        using var retryRes = await _client.SendAsync(retryRequest).ConfigureAwait(false);
+                        if (retryRes.IsSuccessStatusCode)
+                        {
+                            return await ProcessFilmSearchResponse(retryRes, tmdbid.ToString(CultureInfo.InvariantCulture)).ConfigureAwait(false);
+                        }
+
+                        body = await retryRes.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    }
+
                     if (body.Length > 300)
                     {
                         body = body.Substring(0, 300);
@@ -330,81 +351,86 @@ public class LetterboxdApi : IDisposable
                     throw new InvalidOperationException($"TMDB lookup returned {(int)res.StatusCode} for https://letterboxd.com/tmdb/{tmdbid}. Body: " + body);
                 }
 
-                var html = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
-                var htmlDoc = new HtmlDocument();
-                htmlDoc.LoadHtml(html);
+                return await ProcessFilmSearchResponse(res, tmdbid.ToString(CultureInfo.InvariantCulture)).ConfigureAwait(false);
+            }
+        }
+    }
 
-                string filmUrl = htmlDoc.DocumentNode
-                    .SelectSingleNode("//link[@rel='canonical']")
-                    ?.GetAttributeValue("href", string.Empty) ?? string.Empty;
+    private async Task<FilmResult> ProcessFilmSearchResponse(HttpResponseMessage res, string originalId)
+    {
+        var html = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+        var htmlDoc = new HtmlDocument();
+        htmlDoc.LoadHtml(html);
 
-                if (string.IsNullOrWhiteSpace(filmUrl))
+        string filmUrl = htmlDoc.DocumentNode
+            .SelectSingleNode("//link[@rel='canonical']")
+            ?.GetAttributeValue("href", string.Empty) ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(filmUrl))
+        {
+            var a = htmlDoc.DocumentNode.SelectSingleNode("//a[starts-with(@href, '/film/')]");
+            var href = a?.GetAttributeValue("href", string.Empty) ?? string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(href))
+            {
+                filmUrl = href.StartsWith('/') ? "https://letterboxd.com" + href : href;
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(filmUrl))
+        {
+            var finalUri = res?.RequestMessage?.RequestUri?.ToString() ?? string.Empty;
+            throw new InvalidOperationException($"The search returned no results (Could not resolve film URL from search page). FinalUrl='{finalUri}' OriginalId='{originalId}'");
+        }
+
+        var filmUri = new Uri(filmUrl, UriKind.Absolute);
+        var segments = filmUri.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+        if (segments.Length < 2 || !segments[0].Equals("film", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"Search page resolved to non-film URL: '{filmUrl}'");
+        }
+
+        string filmSlug = segments[1];
+
+        using (var filmRequest = new HttpRequestMessage(HttpMethod.Get, $"/film/{filmSlug}/"))
+        {
+            SetNavigationHeaders(filmRequest.Headers, "same-origin", res.RequestMessage?.RequestUri?.ToString());
+            using (var filmRes = await _client.SendAsync(filmRequest).ConfigureAwait(false))
+            {
+                if (!filmRes.IsSuccessStatusCode)
                 {
-                    var a = htmlDoc.DocumentNode.SelectSingleNode("//a[starts-with(@href, '/film/')]");
-                    var href = a?.GetAttributeValue("href", string.Empty) ?? string.Empty;
-
-                    if (!string.IsNullOrWhiteSpace(href))
+                    var body = await filmRes.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    if (body.Length > 300)
                     {
-                        filmUrl = href.StartsWith('/') ? "https://letterboxd.com" + href : href;
+                        body = body.Substring(0, 300);
                     }
+
+                    throw new InvalidOperationException($"Film page lookup returned {(int)filmRes.StatusCode} for https://letterboxd.com/film/{filmSlug}/. Body: " + body);
                 }
 
-                if (string.IsNullOrWhiteSpace(filmUrl))
+                var filmHtml = await filmRes.Content.ReadAsStringAsync().ConfigureAwait(false);
+                var filmDoc = new HtmlDocument();
+                filmDoc.LoadHtml(filmHtml);
+
+                HtmlNode? elForId =
+                    filmDoc.DocumentNode.SelectSingleNode($"//div[@data-film-slug='{filmSlug}']") ??
+                    filmDoc.DocumentNode.SelectSingleNode($"//div[@data-item-link='/film/{filmSlug}/']") ??
+                    filmDoc.DocumentNode.SelectSingleNode("//div[@data-film-id]");
+
+                if (elForId == null)
                 {
-                    var finalUri = res?.RequestMessage?.RequestUri?.ToString() ?? string.Empty;
-                    throw new InvalidOperationException($"The search returned no results (Could not resolve film URL from TMDB page). FinalUrl='{finalUri}'");
+                    throw new InvalidOperationException("The search returned no results (No html element found to get letterboxd filmId)");
                 }
 
-                var filmUri = new Uri(filmUrl, UriKind.Absolute);
-                var segments = filmUri.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+                string filmId = elForId.GetAttributeValue("data-film-id", string.Empty);
 
-                if (segments.Length < 2 || !segments[0].Equals("film", StringComparison.OrdinalIgnoreCase))
+                if (string.IsNullOrEmpty(filmId))
                 {
-                    throw new InvalidOperationException($"TMDB page resolved to non-film URL: '{filmUrl}'");
+                    throw new InvalidOperationException("The search returned no results (data-film-id attribute is empty)");
                 }
 
-                string filmSlug = segments[1];
-
-                using (var filmRequest = new HttpRequestMessage(HttpMethod.Get, $"/film/{filmSlug}/"))
-                {
-                    SetNavigationHeaders(filmRequest.Headers, "same-origin", $"https://letterboxd.com/tmdb/{tmdbid}");
-                    using (var filmRes = await _client.SendAsync(filmRequest).ConfigureAwait(false))
-                    {
-                        if (!filmRes.IsSuccessStatusCode)
-                        {
-                            var body = await filmRes.Content.ReadAsStringAsync().ConfigureAwait(false);
-                            if (body.Length > 300)
-                            {
-                                body = body.Substring(0, 300);
-                            }
-
-                            throw new InvalidOperationException($"Film page lookup returned {(int)filmRes.StatusCode} for https://letterboxd.com/film/{filmSlug}/. Body: " + body);
-                        }
-
-                        var filmHtml = await filmRes.Content.ReadAsStringAsync().ConfigureAwait(false);
-                        var filmDoc = new HtmlDocument();
-                        filmDoc.LoadHtml(filmHtml);
-
-                        HtmlNode? elForId =
-                            filmDoc.DocumentNode.SelectSingleNode($"//div[@data-film-slug='{filmSlug}']") ??
-                            filmDoc.DocumentNode.SelectSingleNode($"//div[@data-item-link='/film/{filmSlug}/']") ??
-                            filmDoc.DocumentNode.SelectSingleNode("//div[@data-film-id]");
-
-                        if (elForId == null)
-                        {
-                            throw new InvalidOperationException("The search returned no results (No html element found to get letterboxd filmId)");
-                        }
-
-                        string filmId = elForId.GetAttributeValue("data-film-id", string.Empty);
-
-                        if (string.IsNullOrEmpty(filmId))
-                        {
-                            throw new InvalidOperationException("The search returned no results (data-film-id attribute is empty)");
-                        }
-
-                        return new FilmResult(filmSlug, filmId);
-                    }
-                }
+                return new FilmResult(filmSlug, filmId);
             }
         }
     }
@@ -421,6 +447,28 @@ public class LetterboxdApi : IDisposable
 
             using (var res = await _client.SendAsync(searchRequest).ConfigureAwait(false))
             {
+                if (res.StatusCode == HttpStatusCode.Forbidden)
+                {
+                    var body = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    if (body.Contains("Just a moment", StringComparison.OrdinalIgnoreCase) || body.Contains("cloudflare", StringComparison.OrdinalIgnoreCase))
+                    {
+                        await Task.Delay(2000).ConfigureAwait(false);
+                        using var warmup = new HttpRequestMessage(HttpMethod.Get, "/");
+                        SetNavigationHeaders(warmup.Headers);
+                        using var warmupRes = await _client.SendAsync(warmup).ConfigureAwait(false);
+
+                        using var retryRequest = new HttpRequestMessage(HttpMethod.Get, imdbPath);
+                        SetNavigationHeaders(retryRequest.Headers, "same-origin");
+                        using var retryRes = await _client.SendAsync(retryRequest).ConfigureAwait(false);
+                        if (retryRes.IsSuccessStatusCode)
+                        {
+                            return await ProcessFilmSearchResponse(retryRes, imdbid).ConfigureAwait(false);
+                        }
+                    }
+
+                    throw new InvalidOperationException($"IMDb lookup returned 403 (Forbidden) for https://letterboxd.com/imdb/{imdbid}");
+                }
+
                 if (!res.IsSuccessStatusCode)
                 {
                     var body = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
@@ -432,42 +480,7 @@ public class LetterboxdApi : IDisposable
                     throw new InvalidOperationException($"IMDb lookup returned {(int)res.StatusCode} for https://letterboxd.com/imdb/{imdbid}. Body: " + body);
                 }
 
-                var html = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
-                var htmlDoc = new HtmlDocument();
-                htmlDoc.LoadHtml(html);
-
-                string filmUrl = htmlDoc.DocumentNode
-                    .SelectSingleNode("//link[@rel='canonical']")
-                    ?.GetAttributeValue("href", string.Empty) ?? string.Empty;
-
-                if (string.IsNullOrWhiteSpace(filmUrl))
-                {
-                    var a = htmlDoc.DocumentNode.SelectSingleNode("//a[starts-with(@href, '/film/')]");
-                    var href = a?.GetAttributeValue("href", string.Empty) ?? string.Empty;
-
-                    if (!string.IsNullOrWhiteSpace(href))
-                    {
-                        filmUrl = href.StartsWith('/') ? "https://letterboxd.com" + href : href;
-                    }
-                }
-
-                if (string.IsNullOrWhiteSpace(filmUrl))
-                {
-                    throw new InvalidOperationException($"The search returned no results (Could not resolve film URL from IMDb page).");
-                }
-
-                var filmUri = new Uri(filmUrl, UriKind.Absolute);
-                var segments = filmUri.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
-
-                if (segments.Length < 2 || !segments[0].Equals("film", StringComparison.OrdinalIgnoreCase))
-                {
-                    throw new InvalidOperationException($"IMDb page resolved to non-film URL: '{filmUrl}'");
-                }
-
-                string filmSlug = segments[1];
-
-                // Reuse the same logic to get filmId from slug
-                return await SearchFilmBySlug(filmSlug).ConfigureAwait(false);
+                return await ProcessFilmSearchResponse(res, imdbid).ConfigureAwait(false);
             }
         }
     }

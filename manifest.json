@@ -8,6 +8,13 @@
     "category": "Metadata",
     "versions": [
       {
+        "version": "1.11.1.0",
+        "changelog": "- fix: settings persistence and bot detection on search lookups\n- feat: default user selection to current Jellyfin user\n- chore: repository cleanup and script reorganization",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.11.1/LetterboxdLog-v1.11.1.zip",
+        "timestamp": "2026-02-26T15:35:00Z"
+      },
+      {
         "version": "1.11.0.0",
         "changelog": "- feat: fix mass-rating bug and enforce default 24-hour sync window v1.11.0.0 (e5c4bb8)\n- chore: trigger fresh release v1.10.9 to resolve manifest sync issues (db98b58)",
         "targetAbi": "10.11.0.0",

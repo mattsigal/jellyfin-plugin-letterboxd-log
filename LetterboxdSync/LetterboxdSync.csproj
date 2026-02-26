@@ -5,6 +5,7 @@
     <AssemblyName>LetterboxdLog</AssemblyName>
     <RootNamespace>LetterboxdLog</RootNamespace>
     <Nullable>enable</Nullable>
+    <Version>1.11.1.0</Version>
     <AnalysisMode>AllEnabledByDefault</AnalysisMode>
     <CodeAnalysisRuleSet>../jellyfin.ruleset</CodeAnalysisRuleSet>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>

@@ -16,41 +16,30 @@ export default function (view, params) {
                 selectUsers.appendChild(option);
             }
 
-            const userSelectedId = document.getElementById('usersJellyfin').value;
-            ApiClient.getPluginConfiguration(pluginId).then(config => {
-                let configUserFilter = config.Accounts.filter(function (item) {
-                    return item.UserJellyfin == userSelectedId;
-                });
-                view.querySelector('#username').value = configUserFilter[0].UserLetterboxd;
-                view.querySelector('#password').value = configUserFilter[0].PasswordLetterboxd;
-                view.querySelector('#enable').checked = configUserFilter[0].Enable;
-                view.querySelector('#sendfavorite').checked = configUserFilter[0].SendFavorite;
-                view.querySelector('#enabledatefilter').checked = configUserFilter[0].EnableDateFilter || false;
-                view.querySelector('#datefilterdays').value = configUserFilter[0].DateFilterDays || 7;
-                view.querySelector('#timezoneoffset').value = configUserFilter[0].TimezoneOffset || 0;
-                view.querySelector('#cookie').value = configUserFilter[0].Cookie || '';
-                view.querySelector('#useragent').value = configUserFilter[0].UserAgent || '';
-                view.querySelector('#cookiesraw').value = configUserFilter[0].CookiesRaw || '';
-                view.querySelector('#cookiesuseragent').value = configUserFilter[0].CookiesUserAgent || '';
+            // Default to currently logged in user
+            ApiClient.getCurrentUser().then(currentUser => {
+                if (currentUser && currentUser.Id) {
+                    const exists = Array.from(selectUsers.options).some(opt => opt.value === currentUser.Id);
+                    if (exists) {
+                        selectUsers.value = currentUser.Id;
+                    }
+                }
+                loadAccountConfig(selectUsers.value);
+            }).catch(() => {
+                loadAccountConfig(selectUsers.value);
             });
         });
     });
 
-
-    view.querySelector('#usersJellyfin').addEventListener('change', function (e) {
-
-        e.preventDefault();
-        const userSelectedId = e.target.value;
-
+    function loadAccountConfig(userSelectedId) {
         ApiClient.getPluginConfiguration(pluginId).then(config => {
-
             let configUserFilter = config.Accounts.filter(function (item) {
                 return item.UserJellyfin == userSelectedId;
             });
 
             if (configUserFilter.length > 0) {
-                view.querySelector('#username').value = configUserFilter[0].UserLetterboxd;
-                view.querySelector('#password').value = configUserFilter[0].PasswordLetterboxd;
+                view.querySelector('#username').value = configUserFilter[0].UserLetterboxd || '';
+                view.querySelector('#password').value = configUserFilter[0].PasswordLetterboxd || '';
                 view.querySelector('#enable').checked = configUserFilter[0].Enable;
                 view.querySelector('#sendfavorite').checked = configUserFilter[0].SendFavorite;
                 view.querySelector('#enabledatefilter').checked = configUserFilter[0].EnableDateFilter || false;
@@ -60,8 +49,7 @@ export default function (view, params) {
                 view.querySelector('#useragent').value = configUserFilter[0].UserAgent || '';
                 view.querySelector('#cookiesraw').value = configUserFilter[0].CookiesRaw || '';
                 view.querySelector('#cookiesuseragent').value = configUserFilter[0].CookiesUserAgent || '';
-            }
-            else {
+            } else {
                 view.querySelector('#username').value = '';
                 view.querySelector('#password').value = '';
                 view.querySelector('#enable').checked = false;
@@ -74,8 +62,13 @@ export default function (view, params) {
                 view.querySelector('#cookiesraw').value = '';
                 view.querySelector('#cookiesuseragent').value = '';
             }
-
         });
+    }
+
+
+    view.querySelector('#usersJellyfin').addEventListener('change', function (e) {
+        e.preventDefault();
+        loadAccountConfig(e.target.value);
     });
 
     view.querySelector('#LetterboxdLogConfigForm').addEventListener('submit', function (e) {
@@ -88,11 +81,7 @@ export default function (view, params) {
 
         ApiClient.getPluginConfiguration(pluginId).then(config => {
 
-            let AccountsUpdate = [];
-
-            for (let account of config.Accounts)
-                if (account.UserJellyfin != userSelectedId)
-                    AccountsUpdate.push(account);
+            let AccountsUpdate = config.Accounts.filter(account => account.UserJellyfin != userSelectedId);
 
             let configUser = {};
             configUser.UserJellyfin = userSelectedId;
@@ -111,7 +100,6 @@ export default function (view, params) {
             const data = JSON.stringify(configUser);
             const url = ApiClient.getUrl('Jellyfin.Plugin.LetterboxdLog/Authenticate');
 
-            console.log(configUser);
             if (!configUser.Enable) {
                 Dashboard.hideLoadingMsg();
 
@@ -135,11 +123,17 @@ export default function (view, params) {
                     });
 
                 }).catch(function (response) {
-                    response.json().then(res => {
-                        console.log(res);
-                        Dashboard.hideLoadingMsg();
-                        Dashboard.processErrorResponse({ statusText: `${response.statusText} - ${res.Message}` });
-                    });
+                    console.error('Authentication error:', response);
+                    Dashboard.hideLoadingMsg();
+                    if (response.json) {
+                        response.json().then(res => {
+                            Dashboard.processErrorResponse({ statusText: `${response.statusText || 'Error'} - ${res.Message || 'Unknown'}` });
+                        }).catch(() => {
+                            Dashboard.processErrorResponse({ statusText: response.statusText || 'Authentication failed' });
+                        });
+                    } else {
+                        Dashboard.processErrorResponse({ statusText: response.statusText || 'Authentication failed' });
+                    }
                 });
             }
         })
