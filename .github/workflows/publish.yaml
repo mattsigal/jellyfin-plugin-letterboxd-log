@@ -107,7 +107,7 @@ jobs:
           git config user.email "actions@github.com"
           git add manifest.json
           git commit -m "chore(release): manifest update v${{ needs.build.outputs.release-version }}"
-          git push origin ${{ github.ref_name }}
+          git push origin main
 
       - name: 'Create Release'
         uses: softprops/action-gh-release@v2
