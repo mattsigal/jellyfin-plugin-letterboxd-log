@@ -78,16 +78,17 @@ public class LetterboxdLogSyncTask : IScheduledTask
                 continue;
             }
 
-            // Apply date filtering if enabled
-            if (account.EnableDateFilter)
+            // Apply date filtering. If not explicitly enabled, default to a 24-hour window to prevent mass-syncing history.
+            var filterDays = account.EnableDateFilter ? account.DateFilterDays : 1;
+            var cutoffDate = DateTime.UtcNow.AddDays(-filterDays);
+
+            _logger.LogInformation("Syncing movies played since {CutoffDate} (FilterDays: {Days}, ExplicitlyEnabled: {Enabled})", cutoffDate, filterDays, account.EnableDateFilter);
+
+            lstMoviesPlayed = lstMoviesPlayed.Where(movie =>
             {
-                var cutoffDate = DateTime.UtcNow.AddDays(-account.DateFilterDays);
-                lstMoviesPlayed = lstMoviesPlayed.Where(movie =>
-                {
-                    var userItemData = _userDataManager.GetUserData(user, movie);
-                    return userItemData != null && userItemData.LastPlayedDate.HasValue && userItemData.LastPlayedDate.Value >= cutoffDate;
-                }).ToList();
-            }
+                var userItemData = _userDataManager.GetUserData(user, movie);
+                return userItemData != null && userItemData.LastPlayedDate.HasValue && userItemData.LastPlayedDate.Value >= cutoffDate;
+            }).ToList();
 
             var api = new LetterboxdApi(account.CookiesUserAgent ?? account.UserAgent ?? string.Empty);
             try
@@ -232,7 +233,7 @@ public class LetterboxdLogSyncTask : IScheduledTask
                             // human-like delay between films
                             await Task.Delay(1000 + Random.Shared.Next(2000), cancellationToken).ConfigureAwait(false);
 
-                            await api.MarkAsWatched(filmResult.FilmSlug, filmResult.FilmId, viewingDate, tags, favorite).ConfigureAwait(false);
+                            await api.MarkAsWatched(filmResult.FilmSlug, filmResult.FilmId, viewingDate, tags, favorite, rating: null).ConfigureAwait(false);
 
                             _logger.LogInformation("Film logged in Letterboxd User: {Username} Movie: {Movie} Date: {ViewingDate}", user.Username, title, viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
                         }

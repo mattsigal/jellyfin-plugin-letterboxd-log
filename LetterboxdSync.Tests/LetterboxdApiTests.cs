@@ -10,9 +10,9 @@ using System.Threading.Tasks;
 using Moq;
 using Moq.Protected;
 using Xunit;
-using LetterboxdSync;
+using LetterboxdLog;
 
-namespace LetterboxdSync.Tests
+namespace LetterboxdLog.Tests
 {
     public class LetterboxdApiTests
     {
@@ -35,10 +35,10 @@ namespace LetterboxdSync.Tests
 
             // This test should succeed without throwing an exception
             await _api.Authenticate(testUsername, testPassword);
-            
+
             // Verify that authentication set a CSRF token
             Assert.NotEmpty(_api.Csrf);
-            
+
             // Pause to avoid rate limiting errors
             await Task.Delay(1000);
         }
@@ -49,18 +49,18 @@ namespace LetterboxdSync.Tests
         {
             // Pause before test to avoid rate limiting errors
             await Task.Delay(1000);
-            
+
             string invalidUsername = "invalid_user_12345";
             string invalidPassword = "wrong_password";
 
             // With invalid credentials, authentication should fail
-            var exception = await Assert.ThrowsAsync<Exception>(() => _api.Authenticate(invalidUsername, invalidPassword));
-            
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => _api.Authenticate(invalidUsername, invalidPassword));
+
             // Display error message for debugging
             // and verify that an exception is thrown (which is already the case if we reach here)
             Assert.NotNull(exception.Message);
             Assert.NotEmpty(exception.Message);
-            
+
             // Pause to avoid rate limiting errors
             await Task.Delay(1000);
         }
@@ -71,7 +71,7 @@ namespace LetterboxdSync.Tests
         {
             // Pause before test to avoid rate limiting errors
             await Task.Delay(1500);
-            
+
             int tmdbId = 550; // Fight Club
 
             // This test makes a real request and should succeed
@@ -79,10 +79,10 @@ namespace LetterboxdSync.Tests
 
             // Verify that the result is correct
             Assert.NotNull(result);
-            Assert.NotEmpty(result.filmSlug);
-            Assert.NotEmpty(result.filmId);
-            Assert.Contains("fight-club", result.filmSlug);
-            
+            Assert.NotEmpty(result.FilmSlug);
+            Assert.NotEmpty(result.FilmId);
+            Assert.Contains("fight-club", result.FilmSlug);
+
             // Pause to avoid rate limiting errors
             await Task.Delay(1000);
         }
@@ -92,7 +92,7 @@ namespace LetterboxdSync.Tests
         {
             // Pause before test to avoid rate limiting errors
             await Task.Delay(1500);
-            
+
             int tmdbId = 260513; // Incredibles 2
 
             // This test makes a real request and should succeed
@@ -100,10 +100,10 @@ namespace LetterboxdSync.Tests
 
             // Verify that the result is correct
             Assert.NotNull(result2);
-            Assert.NotEmpty(result2.filmSlug);
-            Assert.NotEmpty(result2.filmId);
-            Assert.Contains("incredibles-2", result2.filmSlug);
-            
+            Assert.NotEmpty(result2.FilmSlug);
+            Assert.NotEmpty(result2.FilmId);
+            Assert.Contains("incredibles-2", result2.FilmSlug);
+
             // Pause to avoid rate limiting errors
             await Task.Delay(1000);
         }
@@ -112,11 +112,11 @@ namespace LetterboxdSync.Tests
         public async Task SearchFilmByTmdbId_WithInvalidTmdbId_ShouldThrowException()
         {
             int tmdbId = 999999999;
-            
+
             var htmlContent = "<html><body></body></html>";
 
             var mockHttpMessageHandler = new Mock<HttpMessageHandler>();
-            
+
             var response = new HttpResponseMessage
             {
                 StatusCode = HttpStatusCode.OK,
@@ -135,7 +135,7 @@ namespace LetterboxdSync.Tests
                     ItExpr.IsAny<CancellationToken>())
                 .ReturnsAsync(response);
 
-            await Assert.ThrowsAsync<Exception>(() => _api.SearchFilmByTmdbId(tmdbId));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => _api.SearchFilmByTmdbId(tmdbId));
         }
 
     }

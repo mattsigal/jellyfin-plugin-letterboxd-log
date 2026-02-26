@@ -8,6 +8,13 @@
     "category": "Metadata",
     "versions": [
       {
+        "version": "1.11.0.0",
+        "changelog": "- fix: mass-rating bug (omit rating by default)\n- feat: enforce default 24-hour sync window to prevent mass-syncing history",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.11.0/LetterboxdLog-v1.11.0.zip",
+        "timestamp": "2026-02-26T00:00:00Z"
+      },
+      {
         "version": "1.10.9.0",
         "changelog": "- fix(manifest): correct asset filename discrepancy and standardize workflow naming (fc3f645)",
         "targetAbi": "10.11.0.0",

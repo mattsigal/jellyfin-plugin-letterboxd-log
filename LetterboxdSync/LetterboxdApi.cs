@@ -472,7 +472,7 @@ public class LetterboxdApi : IDisposable
         }
     }
 
-    public async Task MarkAsWatched(string filmSlug, string filmId, DateTime? date, string[] tags, bool liked = false)
+    public async Task MarkAsWatched(string filmSlug, string filmId, DateTime? date, string[] tags, bool liked = false, int? rating = null)
     {
         string url = "/s/save-diary-entry";
         DateTime viewingDate = date == null ? DateTime.Now : (DateTime)date;
@@ -496,7 +496,7 @@ public class LetterboxdApi : IDisposable
                 request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/javascript"));
                 request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*", 0.01));
 
-                request.Content = new FormUrlEncodedContent(new Dictionary<string, string>
+                var formData = new Dictionary<string, string>
                 {
                     { "__csrf", _csrf },
                     { "json", "true" },
@@ -506,9 +506,15 @@ public class LetterboxdApi : IDisposable
                     { "viewingDateStr", viewingDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) },
                     { "review", string.Empty },
                     { "tags", string.Join(", ", tags) },
-                    { "rating", "0" },
                     { "liked", liked.ToString().ToLowerInvariant() }
-                });
+                };
+
+                if (rating.HasValue)
+                {
+                    formData.Add("rating", rating.Value.ToString(CultureInfo.InvariantCulture));
+                }
+
+                request.Content = new FormUrlEncodedContent(formData);
 
                 using (var response = await _client.SendAsync(request).ConfigureAwait(false))
                 {
