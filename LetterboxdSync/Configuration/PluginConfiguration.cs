@@ -6,5 +6,5 @@ namespace LetterboxdLog.Configuration;
 
 public class PluginConfiguration : BasePluginConfiguration
 {
-    public Collection<Account> Accounts { get; } = new Collection<Account>();
+    public List<Account> Accounts { get; set; } = new List<Account>();
 }
