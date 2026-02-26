@@ -109,28 +109,14 @@ jobs:
           git commit -m "chore(release): manifest update v${{ needs.build.outputs.release-version }}"
           git push origin ${{ github.ref_name }}
 
-            - name: 'Commit Changes'
-              run: |
-                git config user.name "GitHub Actions"
-                git config user.email "actions@github.com"
-
-                git add Directory.Build.props build.yaml manifest.json
-
-                git commit -m "chore(release): v${{ needs.build.outputs.release-version }}"
-                git tag v${{ needs.build.outputs.release-version }}
-
-                git pull origin ${{ github.ref_name }} --rebase
-                git push origin ${{ github.ref_name }}
-                git push origin v${{ needs.build.outputs.release-version }}
-
-            - name: 'Create Release'
-              uses: softprops/action-gh-release@v2
-              with:
-                tag_name: v${{ needs.build.outputs.release-version }}
-                name: v${{ needs.build.outputs.release-version }}
-                body: ${{needs.build.outputs.changelog}}
-                draft: false
-                prerelease: false
-                files: publish/LetterboxdLog-v${{ needs.build.outputs.release-version }}.zip
-              env:
-                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: 'Create Release'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.build.outputs.release-version }}
+          name: v${{ needs.build.outputs.release-version }}
+          body: "Official Release v${{ needs.build.outputs.release-version }}"
+          draft: false
+          prerelease: false
+          files: publish/LetterboxdLog-v${{ needs.build.outputs.release-version }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
