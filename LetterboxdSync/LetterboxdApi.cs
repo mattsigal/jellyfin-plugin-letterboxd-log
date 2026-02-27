@@ -516,7 +516,7 @@ public class LetterboxdApi : IDisposable
                     { "__csrf", _csrf },
                     { "json", "true" },
                     { "viewingId", string.Empty },
-                    { "filmId", filmId },
+                    { "viewingableUid", $"film:{filmId}" },
                     { "specifiedDate", "true" },
                     { "viewingDateStr", viewingDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) },
                     { "review", string.Empty },

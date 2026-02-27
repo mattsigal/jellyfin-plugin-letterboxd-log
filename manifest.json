@@ -8,6 +8,14 @@
     "category": "Metadata",
     "versions": [
       {
+        "version": "1.14.0.0",
+        "changelog": "- fix: update diary submission for Letterboxd backend changes (viewingableUid) (Feb 26 2026)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.14.0.0/LetterboxdLog-v1.14.0.0.zip",
+        "checksum": "b546d0e5d1deb601bb7fa9aaa622621c",
+        "timestamp": "2026-02-27T04:45:00Z"
+      },
+      {
         "version": "1.13.0.0",
         "changelog": "- fix: adapt CSRF extraction for Letterboxd site update (supermodelCSRF) (d5d01fb)",
         "targetAbi": "10.11.0.0",
