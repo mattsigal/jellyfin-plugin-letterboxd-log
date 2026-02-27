@@ -47,7 +47,8 @@ jobs:
           cd publish
           zip LetterboxdLog-v${{ steps.extract-version.outputs.version }}.zip \
           HtmlAgilityPack.dll \
-          LetterboxdLog.dll
+          LetterboxdLog.dll \
+          System.Xml.XPath.XmlDocument.dll
 
       - name: 'Upload Artefacts'
         uses: actions/upload-artifact@v4
@@ -63,7 +64,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name }}
+          ref: main
           fetch-depth: 0
 
       - uses: actions/download-artifact@v4
@@ -75,17 +76,13 @@ jobs:
         run: |
           TARGETABI="10.11.0.0"
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-
           CHECKSUM=$(md5sum publish/LetterboxdLog-v${{ needs.build.outputs.release-version }}.zip | awk '{print $1}')
           SOURCE_URL="https://github.com/${{ github.repository_owner }}/${{ github.event.repository.name }}/releases/download/v${{ needs.build.outputs.release-version }}/LetterboxdLog-v${{ needs.build.outputs.release-version }}.zip"
 
-          # Use git logs for changelog since the last tag
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          if [ -z "$PREV_TAG" ]; then
-            CHANGELOG=$(git log --pretty=format:"- %s (%h)" -n 10)
-          else
-            CHANGELOG=$(git log $PREV_TAG..HEAD --pretty=format:"- %s (%h)")
-          fi
+          # Get changelog from current tag (which triggered this)
+          # We need to fetch the tag metadata since we are on main now
+          git fetch origin tag v${{ needs.build.outputs.release-version }} --no-tags
+          CHANGELOG=$(git log -1 --pretty=format:"- %s (%h)" v${{ needs.build.outputs.release-version }})
 
           jq --arg version "${{ needs.build.outputs.release-version }}" \
              --arg changelog "$CHANGELOG" \
@@ -109,8 +106,8 @@ jobs:
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add manifest.json
-          git commit -m "chore(release): manifest update v${{ needs.build.outputs.release-version }}"
-          git push origin HEAD:main
+          git commit -m "chore(release): manifest update v${{ needs.build.outputs.release-version }}" || echo "No changes to commit"
+          git push origin main
 
       - name: 'Create Release'
         uses: softprops/action-gh-release@v2
