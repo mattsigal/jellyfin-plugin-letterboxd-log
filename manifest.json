@@ -9,11 +9,11 @@
     "versions": [
       {
         "version": "1.15.0.0",
-        "changelog": "- fix: align diary submission with modern Letterboxd backend (UID case, tag format, headers) (Feb 26 2026)",
+        "changelog": "- feat: release v1.15.0.0 with clean build and refined sync logic (63493b0)",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.15.0.0/LetterboxdLog-v1.15.0.0.zip",
-        "checksum": "cb61edcc7d2f3007ade0cf70467405b7",
-        "timestamp": "2026-02-27T05:05:00Z"
+        "checksum": "4b785732309274b6c8c252b51742004c",
+        "timestamp": "2026-02-27T05:05:11Z"
       },
       {
         "version": "1.14.0.0",
