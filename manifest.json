@@ -8,16 +8,15 @@
     "category": "Metadata",
     "versions": [
       {
-        "version": "1.11.7",
-        "changelog": "- fix: resolve github action push error using HEAD:main and bump to v1.11.7 (a49b9df)",
+        "version": "1.11.8.0",
+        "changelog": "- fix: resolve \"expired form\" errors by extracting fresh CSRF from HTML\n- fix: standardize versioning to 4-digit format to fix duplicate manifest entries",
         "targetAbi": "10.11.0.0",
-        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.11.7/LetterboxdLog-v1.11.7.zip",
-        "checksum": "be058d8478ec25ac3e03ef155d89bf24",
-        "timestamp": "2026-02-27T00:11:00Z"
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.11.8.0/LetterboxdLog-v1.11.8.0.zip",
+        "timestamp": "2026-02-26T16:20:00Z"
       },
       {
         "version": "1.11.7.0",
-        "changelog": "- fix: refine deployment workflow and git ref handling\n- fix: resolve logging and settings persistence bugs (v1.11.6 logic)",
+        "changelog": "- fix: refine deployment workflow and git ref handling",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.11.7/LetterboxdLog-v1.11.7.zip",
         "timestamp": "2026-02-26T16:10:00Z"

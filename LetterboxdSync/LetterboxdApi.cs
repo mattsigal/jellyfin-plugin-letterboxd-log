@@ -640,10 +640,10 @@ public class LetterboxdApi : IDisposable
         var fresh = ExtractHiddenInput(html, "__csrf");
         if (string.IsNullOrWhiteSpace(fresh))
         {
-            throw new InvalidOperationException($"Could not extract __csrf from film page /film/{filmSlug}/");
+            throw new InvalidOperationException($"Could not extract __csrf from film page /film/{filmSlug}/. Ensure you are logged in correctly and cookies are fresh.");
         }
 
-        _csrf = fresh!;
+        _csrf = fresh.Trim();
     }
 
     private string GetCsrfFromCookie()
