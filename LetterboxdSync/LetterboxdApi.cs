@@ -492,13 +492,14 @@ public class LetterboxdApi : IDisposable
 
         for (int attempt = 0; attempt < 3; attempt++)
         {
-            await RefreshCsrfCookieAsync().ConfigureAwait(false);
+            await RefreshCsrfFromFilmPageAsync(filmSlug).ConfigureAwait(false);
 
             using (var request = new HttpRequestMessage(HttpMethod.Post, url))
             {
                 request.Headers.Referrer = new Uri($"https://letterboxd.com/film/{filmSlug}/");
                 request.Headers.TryAddWithoutValidation("Origin", "https://letterboxd.com");
                 request.Headers.TryAddWithoutValidation("X-Requested-With", "XMLHttpRequest");
+                request.Headers.TryAddWithoutValidation("X-CSRF-Token", _csrf);
                 request.Headers.TryAddWithoutValidation("sec-fetch-dest", "empty");
                 request.Headers.TryAddWithoutValidation("sec-fetch-mode", "cors");
                 request.Headers.TryAddWithoutValidation("sec-fetch-site", "same-origin");
