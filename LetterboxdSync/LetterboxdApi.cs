@@ -15,6 +15,9 @@ namespace LetterboxdLog;
 
 public class LetterboxdApi : IDisposable
 {
+    private const string UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36";
+    private const string LetterboxdUrl = "https://letterboxd.com";
+
     private static readonly Uri BaseUri = new Uri("https://letterboxd.com/");
 
     private readonly CookieContainer _cookieContainer = new CookieContainer();
@@ -46,7 +49,7 @@ public class LetterboxdApi : IDisposable
         }
         else
         {
-            _client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36");
+            _client.DefaultRequestHeaders.UserAgent.ParseAdd(UserAgent);
         }
 
         _client.DefaultRequestHeaders.Accept.Clear();
@@ -497,7 +500,7 @@ public class LetterboxdApi : IDisposable
 
             using (var request = new HttpRequestMessage(HttpMethod.Post, url))
             {
-                request.Headers.Referrer = new Uri($"https://letterboxd.com/film/{filmSlug}/");
+                request.Headers.Referrer = new Uri(LetterboxdUrl + "/film/" + filmSlug + "/");
                 request.Headers.TryAddWithoutValidation("Origin", "https://letterboxd.com");
                 request.Headers.TryAddWithoutValidation("X-Requested-With", "XMLHttpRequest");
                 request.Headers.TryAddWithoutValidation("X-CSRF-Token", _csrf);
@@ -511,22 +514,26 @@ public class LetterboxdApi : IDisposable
                 request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/javascript"));
                 request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*", 0.01));
 
-                var formData = new Dictionary<string, string>
+                var formData = new List<KeyValuePair<string, string>>
                 {
-                    { "__csrf", _csrf },
-                    { "json", "true" },
-                    { "viewingId", string.Empty },
-                    { "viewingableUid", $"film:{filmId}" },
-                    { "specifiedDate", "true" },
-                    { "viewingDateStr", viewingDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) },
-                    { "review", string.Empty },
-                    { "tags", string.Join(", ", tags) },
-                    { "liked", liked.ToString().ToLowerInvariant() }
+                    new KeyValuePair<string, string>("__csrf", _csrf),
+                    new KeyValuePair<string, string>("json", "true"),
+                    new KeyValuePair<string, string>("viewingId", string.Empty),
+                    new KeyValuePair<string, string>("viewingableUid", $"film:{filmId}"),
+                    new KeyValuePair<string, string>("viewingableUID", $"film:{filmId}"),
+                    new KeyValuePair<string, string>("specifiedDate", "true"),
+                    new KeyValuePair<string, string>("viewingDateStr", viewingDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
+                    new KeyValuePair<string, string>("review", string.Empty),
+                    new KeyValuePair<string, string>("rewatch", "false"),
+                    new KeyValuePair<string, string>("containsSpoilers", "false"),
+                    new KeyValuePair<string, string>("rating", (rating ?? 0).ToString(CultureInfo.InvariantCulture)),
+                    new KeyValuePair<string, string>("liked", liked.ToString().ToLowerInvariant()),
+                    new KeyValuePair<string, string>("tags", string.Empty)
                 };
 
-                if (rating.HasValue)
+                foreach (var tag in tags)
                 {
-                    formData.Add("rating", rating.Value.ToString(CultureInfo.InvariantCulture));
+                    formData.Add(new KeyValuePair<string, string>("tag", tag));
                 }
 
                 request.Content = new FormUrlEncodedContent(formData);
