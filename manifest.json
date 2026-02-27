@@ -8,8 +8,15 @@
     "category": "Metadata",
     "versions": [
       {
+        "version": "1.11.9.0",
+        "changelog": "- fix: definitively fix \"Expired Form\" errors with robust CSRF extraction (meta tag fallback)\n- fix: standardized manifest to 4-digit versioning (resolves UI duplication)\n- chore: complete local environment cleanup and script migration",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.11.9.0/LetterboxdLog-v1.11.9.0.zip",
+        "timestamp": "2026-02-26T18:00:00Z"
+      },
+      {
         "version": "1.11.8.0",
-        "changelog": "- fix: resolve \"expired form\" errors by extracting fresh CSRF from HTML\n- fix: standardize versioning to 4-digit format to fix duplicate manifest entries",
+        "changelog": "- fix: CSRF extraction from HTML (Initial implementation)",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.11.8.0/LetterboxdLog-v1.11.8.0.zip",
         "timestamp": "2026-02-26T16:20:00Z"
@@ -23,7 +30,7 @@
       },
       {
         "version": "1.11.6.0",
-        "changelog": "- fix: resolve \"request could not be processed\" error during film logging",
+        "changelog": "- fix: resolve logging failures via header refinement",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.11.6/LetterboxdLog-v1.11.6.zip",
         "timestamp": "2026-02-26T16:08:00Z"
@@ -37,103 +44,18 @@
         "timestamp": "2026-02-26T16:00:00Z"
       },
       {
-        "version": "1.11.4.0",
-        "changelog": "- fix: resolve build failures (SA1407, CA2227)",
-        "targetAbi": "10.11.0.0",
-        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.11.4/LetterboxdLog-v1.11.4.zip",
-        "timestamp": "2026-02-26T15:58:00Z"
-      },
-      {
-        "version": "1.11.3.0",
-        "changelog": "- fix: settings persistence (missing collection setter)",
-        "targetAbi": "10.11.0.0",
-        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.11.3/LetterboxdLog-v1.11.3.zip",
-        "timestamp": "2026-02-26T15:55:00Z"
-      },
-      {
         "version": "1.11.1.0",
-        "changelog": "- fix: settings persistence and bot detection on search lookups\n- feat: default user selection to current Jellyfin user\n- chore: repository cleanup and script reorganization",
+        "changelog": "- fix: settings persistence and bot detection on search lookups",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.11.1/LetterboxdLog-v1.11.1.zip",
         "timestamp": "2026-02-26T15:35:00Z"
       },
       {
         "version": "1.11.0.0",
-        "changelog": "- feat: fix mass-rating bug and enforce default 24-hour sync window v1.11.0.0 (e5c4bb8)\n- chore: trigger fresh release v1.10.9 to resolve manifest sync issues (db98b58)",
+        "changelog": "- feat: fix mass-rating bug and sync window",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.11.0/LetterboxdLog-v1.11.0.zip",
-        "checksum": "e51d4314ae6473a2035fc877fa6b3e72",
         "timestamp": "2026-02-26T06:21:12Z"
-      },
-      {
-        "version": "1.10.9.0",
-        "changelog": "- fix(manifest): correct asset filename discrepancy and standardize workflow naming (fc3f645)",
-        "targetAbi": "10.11.0.0",
-        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.10.9/LetterboxdLog-v1.10.9.zip",
-        "checksum": "4c70c2c5c35add94121adc5e398e8bb6",
-        "timestamp": "2026-02-25T15:38:50Z"
-      },
-      {
-        "version": "1.10.8.0",
-        "changelog": "",
-        "targetAbi": "10.11.0.0",
-        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.10.8/LetterboxdLog-v1.10.8.zip",
-        "checksum": "0920e2e648e5f6d0e8fb58a3ee383ac5",
-        "timestamp": "2026-02-25T15:12:41Z"
-      },
-      {
-        "version": "1.10.6.0",
-        "changelog": "- fix: definitively fix manifest structure and workflow keys (689607b)\n- fix: use jq --arg for robust manifest updates (88bbbd6)\n- fix: correct JSON syntax in publish workflow (d2ba96e)\n- fix: restore and refine logging and rewatch logic v1 (c495441)",
-        "targetAbi": "10.11.0.0",
-        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.10.6/jellyfin-plugin-letterboxd-log-v1.10.6.zip",
-        "checksum": "063d10cbb69ff5dc51e3ed597bdf36fe",
-        "timestamp": "2026-02-25T08:43:13Z"
-      },
-      {
-        "version": "1.10.5.0",
-        "changelog": "- fix: Correctly include response body in logs for diary entry errors.\n- fix: Refine tag formatting for better compatibility.\n- fix: Restore rewatch tag management (reverted by mistake).",
-        "targetAbi": "10.11.0.0",
-        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.10.5/jellyfin-plugin-letterboxd-log-v1.10.5.zip",
-        "timestamp": "2026-02-25T01:00:00Z"
-      },
-      {
-        "version": "1.10.4.0",
-        "changelog": "- feat: Add detailed error logging for diary entry failures.\n- fix: Robust removal of .ignore and LetterboxdSkip tags on rewatch detection.",
-        "targetAbi": "10.11.0.0",
-        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.10.4/jellyfin-plugin-letterboxd-log-v1.10.4.zip",
-        "timestamp": "2026-02-25T00:00:00Z"
-      },
-      {
-        "version": "1.10.3.0",
-        "changelog": "- fix(sync): Ensure LetterboxdSkip tag is saved to NFO when .ignore is found (c0bfea8)",
-        "targetAbi": "10.11.0.0",
-        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.10.3/jellyfin-plugin-letterboxd-log-v1.10.3.zip",
-        "checksum": "33462291c1371ec0b743f6535ea77d53",
-        "timestamp": "2026-02-19T08:42:19Z"
-      },
-      {
-        "version": "1.10.2.0",
-        "changelog": "- fix(ci): Upgrade release action to softprops/action-gh-release@v2 (fix set-output warning) and bump to v1.10.2 (0aed0d9)",
-        "targetAbi": "10.11.0.0",
-        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.10.2/jellyfin-plugin-letterboxd-log-v1.10.2.zip",
-        "checksum": "82737a6952943f2eaf15f27a9a41ce7c",
-        "timestamp": "2026-02-19T08:26:35Z"
-      },
-      {
-        "version": "1.10.1.0",
-        "changelog": "- fix(ci): Add version collision detection to auto-bump logic (a615f7e)\n- fix(ci): Standardize version control (remove CSPROJ version) and harden git push workflow (4deccff)\n- fix(ci): Use explicit refspec for git push to avoid detached HEAD error (128) (424ea60)\n- fix(ci): Target specific project in dotnet publish to avoid solution-level output error (e46351c)\n- fix(ci): Update publish workflow to use correct DLL name and sync Directory.Build.props (0231ac4)\n- Refactor: Fix build errors, StyleCop warnings, add ignore logic, and bump version to 1.9.2.0 (5da0ed6)",
-        "targetAbi": "10.11.0.0",
-        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.10.1/jellyfin-plugin-letterboxd-log-v1.10.1.zip",
-        "checksum": "b10e6ec6df4b4ddc6abff334ccaf6e91",
-        "timestamp": "2026-02-19T08:16:48Z"
-      },
-      {
-        "version": "1.9.1.2",
-        "changelog": "Fix: Compatibility update for Jellyfin 10.11.x (EFCore/User changes).",
-        "targetAbi": "10.11.0.0",
-        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.9.1.2/LetterboxdLog.zip",
-        "checksum": "d6a59953dd994b7ff5a761d802f1dd5b",
-        "timestamp": "2026-02-10T20:59:48Z"
       }
     ]
   }

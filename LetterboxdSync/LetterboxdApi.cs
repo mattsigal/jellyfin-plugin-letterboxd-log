@@ -619,9 +619,15 @@ public class LetterboxdApi : IDisposable
 
     private static string? ExtractHiddenInput(string html, string name)
     {
+        // Try hidden input first
         var pattern = $@"<input[^>]*\bname\s*=\s*[""']{Regex.Escape(name)}[""'][^>]*\bvalue\s*=\s*[""']([^""']*)[""'][^>]*>";
         var m = Regex.Match(html, pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-        return m.Success ? m.Groups[1].Value : null;
+        if (m.Success) return m.Groups[1].Value;
+
+        // Try meta tag fallback (some sites put CSRF there)
+        var metaPattern = $@"<meta[^>]*\bname\s*=\s*[""']csrf-token[""'][^>]*\bcontent\s*=\s*[""']([^""']*)[""'][^>]*>";
+        var m2 = Regex.Match(html, metaPattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        return m2.Success ? m2.Groups[1].Value : null;
     }
 
     private bool HasAuthenticatedSession()
