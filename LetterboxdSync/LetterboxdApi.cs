@@ -113,7 +113,8 @@ public class LetterboxdApi : IDisposable
                 };
                 _cookieContainer.Add(baseUri, dotCookie);
 
-                if (string.Equals(name, "com.xk72.webparts.csrf", StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(name, "com.xk72.webparts.csrf", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(name, "csrf", StringComparison.OrdinalIgnoreCase))
                 {
                     _csrf = val;
                 }
@@ -174,7 +175,7 @@ public class LetterboxdApi : IDisposable
                         }
 
                         var retryHtml = await retryRes.Content.ReadAsStringAsync().ConfigureAwait(false);
-                        var csrfFromRetry = ExtractHiddenInput(retryHtml, "__csrf");
+                        var csrfFromRetry = ExtractCsrf(retryHtml);
                         if (string.IsNullOrWhiteSpace(csrfFromRetry))
                         {
                             throw new InvalidOperationException("Could not find __csrf token on /sign-in/ after retry.");
@@ -205,7 +206,7 @@ public class LetterboxdApi : IDisposable
                 }
 
                 var signInHtml = await signInResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
-                var csrfFromSignIn = ExtractHiddenInput(signInHtml, "__csrf");
+                var csrfFromSignIn = ExtractCsrf(signInHtml);
                 if (string.IsNullOrWhiteSpace(csrfFromSignIn))
                 {
                     throw new InvalidOperationException("Could not find __csrf token on /sign-in/ (login flow likely changed).");
@@ -617,17 +618,28 @@ public class LetterboxdApi : IDisposable
         }
     }
 
-    private static string? ExtractHiddenInput(string html, string name)
+    private static string? ExtractCsrf(string html)
     {
-        // Try hidden input first
-        var pattern = $@"<input[^>]*\bname\s*=\s*[""']{Regex.Escape(name)}[""'][^>]*\bvalue\s*=\s*[""']([^""']*)[""'][^>]*>";
-        var m = Regex.Match(html, pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-        if (m.Success) return m.Groups[1].Value;
+        // Try supermodelCSRF JS variable (current Letterboxd, Feb 2026+)
+        var jsPattern = @"supermodelCSRF\s*=\s*['""]([a-f0-9]+)['""]";
+        var jsMatch = Regex.Match(html, jsPattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (jsMatch.Success)
+        {
+            return jsMatch.Groups[1].Value;
+        }
 
-        // Try meta tag fallback (some sites put CSRF there)
-        var metaPattern = $@"<meta[^>]*\bname\s*=\s*[""']csrf-token[""'][^>]*\bcontent\s*=\s*[""']([^""']*)[""'][^>]*>";
-        var m2 = Regex.Match(html, metaPattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-        return m2.Success ? m2.Groups[1].Value : null;
+        // Try hidden input (legacy Letterboxd)
+        var inputPattern = @"<input[^>]*\bname\s*=\s*[""']__csrf[""'][^>]*\bvalue\s*=\s*[""']([^""']*)[""'][^>]*>";
+        var inputMatch = Regex.Match(html, inputPattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        if (inputMatch.Success)
+        {
+            return inputMatch.Groups[1].Value;
+        }
+
+        // Try meta tag fallback
+        var metaPattern = @"<meta[^>]*\bname\s*=\s*[""']csrf-token[""'][^>]*\bcontent\s*=\s*[""']([^""']*)[""'][^>]*>";
+        var metaMatch = Regex.Match(html, metaPattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        return metaMatch.Success ? metaMatch.Groups[1].Value : null;
     }
 
     private bool HasAuthenticatedSession()
@@ -643,10 +655,18 @@ public class LetterboxdApi : IDisposable
         using var response = await _client.SendAsync(request).ConfigureAwait(false);
         var html = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
 
-        var fresh = ExtractHiddenInput(html, "__csrf");
+        // Try JS variable and hidden input from the page HTML
+        var fresh = ExtractCsrf(html);
+
+        // Fall back to CSRF cookie if HTML extraction fails
         if (string.IsNullOrWhiteSpace(fresh))
         {
-            throw new InvalidOperationException($"Could not extract __csrf from film page /film/{filmSlug}/. Ensure you are logged in correctly and cookies are fresh.");
+            fresh = GetCsrfFromCookie();
+        }
+
+        if (string.IsNullOrWhiteSpace(fresh))
+        {
+            throw new InvalidOperationException($"Could not extract CSRF from film page /film/{filmSlug}/. Ensure you are logged in correctly and cookies are fresh.");
         }
 
         _csrf = fresh.Trim();
@@ -655,21 +675,31 @@ public class LetterboxdApi : IDisposable
     private string GetCsrfFromCookie()
     {
         var cookies = _cookieContainer.GetCookies(BaseUri);
-        return cookies["com.xk72.webparts.csrf"]?.Value ?? string.Empty;
+        return cookies["com.xk72.webparts.csrf"]?.Value
+            ?? cookies["csrf"]?.Value
+            ?? string.Empty;
     }
 
     private async Task RefreshCsrfCookieAsync()
     {
+        string html;
         using (var request = new HttpRequestMessage(HttpMethod.Get, "/"))
         {
             SetNavigationHeaders(request.Headers);
-            using var unused = await _client.SendAsync(request).ConfigureAwait(false);
+            using var response = await _client.SendAsync(request).ConfigureAwait(false);
+            html = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
         }
 
+        // Try cookie first (legacy), then JS variable / hidden input from HTML
         var token = GetCsrfFromCookie();
         if (string.IsNullOrWhiteSpace(token))
         {
-            throw new InvalidOperationException("Could not read CSRF cookie 'com.xk72.webparts.csrf' after refreshing.");
+            token = ExtractCsrf(html);
+        }
+
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            throw new InvalidOperationException("Could not extract CSRF token from homepage (neither cookie nor page content).");
         }
 
         _csrf = token;
