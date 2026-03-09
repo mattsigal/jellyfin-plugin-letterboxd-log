@@ -97,8 +97,9 @@ public class LetterboxdLogSyncTask : IScheduledTask
             // Apply date filtering. If not explicitly enabled, default to a 24-hour window to prevent mass-syncing history.
             var filterDays = account.EnableDateFilter ? account.DateFilterDays : 1;
             var cutoffDate = DateTime.UtcNow.AddDays(-filterDays);
+            var cutoffLocal = cutoffDate.AddHours(account.TimezoneOffset);
 
-            _logger.LogInformation("Syncing movies played since {CutoffDate} (FilterDays: {Days}, ExplicitlyEnabled: {Enabled})", cutoffDate, filterDays, account.EnableDateFilter);
+            _logger.LogInformation("Syncing movies played since {CutoffDate} (FilterDays: {Days}, ExplicitlyEnabled: {Enabled})", cutoffLocal, filterDays, account.EnableDateFilter);
 
             lstMoviesPlayed = lstMoviesPlayed.Where(movie =>
             {
