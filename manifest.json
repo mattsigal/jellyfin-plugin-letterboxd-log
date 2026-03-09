@@ -9,11 +9,11 @@
     "versions": [
       {
         "version": "1.16.0.0",
-        "changelog": "- release: update manifest for v1.16.0.0 (96314c4)",
+        "changelog": "- fix: update Directory.Build.props AssemblyVersion to 1.16.0.0 (66e8785)",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.16.0.0/LetterboxdLog-v1.16.0.0.zip",
-        "checksum": "6f46a1801d853856f2a5046ebf323e51",
-        "timestamp": "2026-03-09T17:12:40Z"
+        "checksum": "7daec453187d3b0653230ec5c08dd686",
+        "timestamp": "2026-03-09T17:47:42Z"
       },
       {
         "version": "1.15.0.0",
