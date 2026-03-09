@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -20,6 +21,11 @@ namespace LetterboxdLog;
 
 public class LetterboxdLogSyncTask : IScheduledTask
 {
+    // In-memory cache: tracks films confirmed as logged for a given user+date.
+    // Key = "userId:movieId:dateString", Value = UTC timestamp of cache entry.
+    // Survives across hourly runs (same plugin lifetime), cleared on Jellyfin restart.
+    private static readonly ConcurrentDictionary<string, DateTime> _syncCache = new();
+
     private readonly ILogger<LetterboxdLogSyncTask> _logger; // Changed to ILogger<T>
     private readonly ILibraryManager _libraryManager;
     private readonly IUserManager _userManager;
@@ -56,6 +62,16 @@ public class LetterboxdLogSyncTask : IScheduledTask
 
     public async Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)
     {
+        // Prune stale cache entries (older than 2 days to cover any filter window)
+        var pruneThreshold = DateTime.UtcNow.AddDays(-2);
+        foreach (var key in _syncCache.Keys)
+        {
+            if (_syncCache.TryGetValue(key, out var ts) && ts < pruneThreshold)
+            {
+                _syncCache.TryRemove(key, out _);
+            }
+        }
+
         var lstUsers = _userManager.Users;
         foreach (var user in lstUsers)
         {
@@ -211,8 +227,6 @@ public class LetterboxdLogSyncTask : IScheduledTask
                 {
                     try
                     {
-                        var dateLastLog = await api.GetDateLastLog(filmResult.FilmSlug).ConfigureAwait(false);
-
                         // Apply user-configured timezone offset
                         if (viewingDate.HasValue)
                         {
@@ -224,8 +238,20 @@ public class LetterboxdLogSyncTask : IScheduledTask
                             ? new DateTime(viewingDate.Value.Year, viewingDate.Value.Month, viewingDate.Value.Day)
                             : DateTime.Today;
 
+                        // Check in-memory cache: skip if already confirmed for this user+movie+date
+                        string cacheKey = $"{user.Id:N}:{movie.Id:N}:{viewingDateOnly:yyyy-MM-dd}";
+                        if (_syncCache.ContainsKey(cacheKey))
+                        {
+                            _logger.LogDebug("Cache hit — skipping Letterboxd check for {Movie} ({Date})", title, viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+                            continue;
+                        }
+
+                        var dateLastLog = await api.GetDateLastLog(filmResult.FilmSlug).ConfigureAwait(false);
+
                         if (dateLastLog != null && dateLastLog.Value.Date == viewingDateOnly.Date)
                         {
+                            // Confirmed on Letterboxd — cache it so we don't check again this window
+                            _syncCache.TryAdd(cacheKey, DateTime.UtcNow);
                             _logger.LogInformation("Film already logged in Letterboxd for this date ({Date}) User: {Username} Movie: {Movie}", viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), user.Username, title);
                         }
                         else
@@ -235,6 +261,8 @@ public class LetterboxdLogSyncTask : IScheduledTask
 
                             await api.MarkAsWatched(filmResult.FilmSlug, filmResult.FilmId, viewingDate, tags, favorite, rating: null).ConfigureAwait(false);
 
+                            // Successfully pushed — cache it
+                            _syncCache.TryAdd(cacheKey, DateTime.UtcNow);
                             _logger.LogInformation("Film logged in Letterboxd User: {Username} Movie: {Movie} Date: {ViewingDate}", user.Username, title, viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
                         }
                     }
