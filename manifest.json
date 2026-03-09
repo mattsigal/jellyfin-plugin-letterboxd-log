@@ -8,6 +8,14 @@
     "category": "Metadata",
     "versions": [
       {
+        "version": "1.16.0.0",
+        "changelog": "- feat: add in-memory sync cache to skip re-checking already-logged films (Mar 9 2026)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.16.0.0/LetterboxdLog-v1.16.0.0.zip",
+        "checksum": "10fbaa154909ee448f77f4bacb6e4f49",
+        "timestamp": "2026-03-09T16:58:00Z"
+      },
+      {
         "version": "1.15.0.0",
         "changelog": "- feat: release v1.15.0.0 with clean build and refined sync logic (63493b0)",
         "targetAbi": "10.11.0.0",
