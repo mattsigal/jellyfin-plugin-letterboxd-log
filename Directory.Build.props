@@ -1,7 +1,5 @@
 <Project>
     <PropertyGroup>
-        <Version>1.16.0.0</Version>
-        <AssemblyVersion>1.16.0.0</AssemblyVersion>
-        <FileVersion>1.16.0.0</FileVersion>
+        <!-- Version is set in LetterboxdSync.csproj (single source of truth) -->
     </PropertyGroup>
 </Project>
