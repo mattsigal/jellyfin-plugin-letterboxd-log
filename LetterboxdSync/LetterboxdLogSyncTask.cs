@@ -2,8 +2,10 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
-using System.Net.Http; // Added for IHttpClientFactory
+using System.Net.Http;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,28 +28,30 @@ public class LetterboxdLogSyncTask : IScheduledTask
     // Survives across hourly runs (same plugin lifetime), cleared on Jellyfin restart.
     private static readonly ConcurrentDictionary<string, DateTime> _syncCache = new();
 
-    private readonly ILogger<LetterboxdLogSyncTask> _logger; // Changed to ILogger<T>
+    private readonly ILogger<LetterboxdLogSyncTask> _logger;
     private readonly ILibraryManager _libraryManager;
     private readonly IUserManager _userManager;
     private readonly IUserDataManager _userDataManager;
-    private readonly IActivityManager _activityManager; // Reverted to IActivityManager
-    private readonly IHttpClientFactory _httpClientFactory; // Added
+    private readonly IActivityManager _activityManager;
+    private readonly IHttpClientFactory _httpClientFactory;
 
     public LetterboxdLogSyncTask(
             IUserManager userManager,
             ILibraryManager libraryManager,
             IUserDataManager userDataManager,
-            IActivityManager activityManager, // Reverted to IActivityManager
-            ILogger<LetterboxdLogSyncTask> logger, // Changed to ILogger<T>
-            IHttpClientFactory httpClientFactory) // Added
+            IActivityManager activityManager,
+            ILogger<LetterboxdLogSyncTask> logger,
+            IHttpClientFactory httpClientFactory)
         {
             _userManager = userManager;
             _libraryManager = libraryManager;
             _userDataManager = userDataManager;
-            _activityManager = activityManager; // Reverted to IActivityManager
-            _logger = logger; // Assigned directly
-            _httpClientFactory = httpClientFactory; // Assigned
+            _activityManager = activityManager;
+            _logger = logger;
+            _httpClientFactory = httpClientFactory;
         }
+
+    private string CachePath => Path.Combine(Path.GetDirectoryName(Plugin.Instance!.ConfigurationFilePath) ?? string.Empty, "LetterboxdLog_SyncCache.json");
 
     private static PluginConfiguration Configuration =>
             Plugin.Instance!.Configuration;
@@ -60,16 +64,65 @@ public class LetterboxdLogSyncTask : IScheduledTask
 
     public string Category => "LetterboxdLog";
 
+    private void LoadCache()
+    {
+        try
+        {
+            if (File.Exists(CachePath))
+            {
+                var json = File.ReadAllText(CachePath);
+                var data = JsonSerializer.Deserialize<Dictionary<string, DateTime>>(json);
+                if (data != null)
+                {
+                    foreach (var kvp in data)
+                    {
+                        _syncCache.TryAdd(kvp.Key, kvp.Value);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading Letterboxd sync cache from {Path}", CachePath);
+        }
+    }
+
+    private void SaveCache()
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(_syncCache);
+            File.WriteAllText(CachePath, json);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving Letterboxd sync cache to {Path}", CachePath);
+        }
+    }
+
     public async Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)
     {
+        // Persistent caching: Load from disk
+        LoadCache();
+
         // Prune stale cache entries (older than 2 days to cover any filter window)
         var pruneThreshold = DateTime.UtcNow.AddDays(-2);
+        bool cacheChanged = false;
+
         foreach (var key in _syncCache.Keys)
         {
             if (_syncCache.TryGetValue(key, out var ts) && ts < pruneThreshold)
             {
-                _syncCache.TryRemove(key, out _);
+                if (_syncCache.TryRemove(key, out _))
+                {
+                    cacheChanged = true;
+                }
             }
+        }
+
+        if (cacheChanged)
+        {
+            SaveCache();
         }
 
         var lstUsers = _userManager.Users;
@@ -252,7 +305,10 @@ public class LetterboxdLogSyncTask : IScheduledTask
                         if (dateLastLog != null && dateLastLog.Value.Date == viewingDateOnly.Date)
                         {
                             // Confirmed on Letterboxd — cache it so we don't check again this window
-                            _syncCache.TryAdd(cacheKey, DateTime.UtcNow);
+                            if (_syncCache.TryAdd(cacheKey, DateTime.UtcNow))
+                            {
+                                SaveCache();
+                            }
                             _logger.LogInformation("Film already logged in Letterboxd for this date ({Date}) User: {Username} Movie: {Movie}", viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), user.Username, title);
                         }
                         else
@@ -263,7 +319,10 @@ public class LetterboxdLogSyncTask : IScheduledTask
                             await api.MarkAsWatched(filmResult.FilmSlug, filmResult.FilmId, viewingDate, tags, favorite, rating: null).ConfigureAwait(false);
 
                             // Successfully pushed — cache it
-                            _syncCache.TryAdd(cacheKey, DateTime.UtcNow);
+                            if (_syncCache.TryAdd(cacheKey, DateTime.UtcNow))
+                            {
+                                SaveCache();
+                            }
                             _logger.LogInformation("Film logged in Letterboxd User: {Username} Movie: {Movie} Date: {ViewingDate}", user.Username, title, viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
                         }
                     }
