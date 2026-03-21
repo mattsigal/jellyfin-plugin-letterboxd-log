@@ -247,6 +247,22 @@ public class LetterboxdLogSyncTask : IScheduledTask
                     }
                 }
 
+                // Compute viewing date early so the cache check can happen before API calls
+                DateTime adjustedViewingDate = viewingDate.HasValue
+                    ? viewingDate.Value.AddHours(account.TimezoneOffset)
+                    : DateTime.UtcNow;
+                DateTime viewingDateOnly = new DateTime(adjustedViewingDate.Year, adjustedViewingDate.Month, adjustedViewingDate.Day);
+
+                // Check in-memory cache BEFORE any Letterboxd API calls.
+                // This prevents re-querying films that were already confirmed as logged,
+                // even when Letterboxd returns transient errors (e.g. 403).
+                string cacheKey = $"{user.Id:N}:{movie.Id:N}:{viewingDateOnly:yyyy-MM-dd}";
+                if (_syncCache.ContainsKey(cacheKey))
+                {
+                    _logger.LogDebug("Cache hit — skipping Letterboxd sync for {Movie} ({Date})", title, viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+                    continue;
+                }
+
                 FilmResult? filmResult = null;
 
                 if (int.TryParse(movie.GetProviderId(MetadataProvider.Tmdb), out tmdbid))
@@ -281,25 +297,6 @@ public class LetterboxdLogSyncTask : IScheduledTask
                 {
                     try
                     {
-                        // Apply user-configured timezone offset
-                        if (viewingDate.HasValue)
-                        {
-                            viewingDate = viewingDate.Value.AddHours(account.TimezoneOffset);
-                        }
-
-                        // Use only the date part for comparison
-                        DateTime viewingDateOnly = viewingDate.HasValue
-                            ? new DateTime(viewingDate.Value.Year, viewingDate.Value.Month, viewingDate.Value.Day)
-                            : DateTime.Today;
-
-                        // Check in-memory cache: skip if already confirmed for this user+movie+date
-                        string cacheKey = $"{user.Id:N}:{movie.Id:N}:{viewingDateOnly:yyyy-MM-dd}";
-                        if (_syncCache.ContainsKey(cacheKey))
-                        {
-                            _logger.LogDebug("Cache hit — skipping Letterboxd check for {Movie} ({Date})", title, viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
-                            continue;
-                        }
-
                         var dateLastLog = await api.GetDateLastLog(filmResult.FilmSlug).ConfigureAwait(false);
 
                         if (dateLastLog != null && dateLastLog.Value.Date == viewingDateOnly.Date)
@@ -316,7 +313,7 @@ public class LetterboxdLogSyncTask : IScheduledTask
                             // human-like delay between films
                             await Task.Delay(1000 + Random.Shared.Next(2000), cancellationToken).ConfigureAwait(false);
 
-                            await api.MarkAsWatched(filmResult.FilmSlug, filmResult.FilmId, viewingDate, tags, favorite, rating: null).ConfigureAwait(false);
+                            await api.MarkAsWatched(filmResult.FilmSlug, filmResult.FilmId, adjustedViewingDate, tags, favorite, rating: null).ConfigureAwait(false);
 
                             // Successfully pushed — cache it
                             if (_syncCache.TryAdd(cacheKey, DateTime.UtcNow))
