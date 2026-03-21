@@ -8,6 +8,14 @@
     "category": "Metadata",
     "versions": [
       {
+        "version": "1.16.4.0",
+        "changelog": "- fix: move cache check before Letterboxd API calls to prevent redundant queries (7bc9d93)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.16.4.0/LetterboxdLog-v1.16.4.0.zip",
+        "checksum": "e38f1cb553d5b43c2a1accbdd1371691",
+        "timestamp": "2026-03-21T17:30:00Z"
+      },
+      {
         "version": "1.16.3.0",
         "changelog": "- Update Letterboxd plugin to v1.16.3.0: Persistent cache for logged items (542aeb6)",
         "targetAbi": "10.11.0.0",
