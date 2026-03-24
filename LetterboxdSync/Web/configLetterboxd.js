@@ -1,5 +1,5 @@
-
 export const pluginId = '99ec381d-a07c-4a0f-b245-ccb37eb14369';
+// Version: 1.17.1.7
 
 export default function (view, params) {
 
@@ -170,6 +170,7 @@ export default function (view, params) {
 
             movies.forEach(movie => {
                 const row = document.createElement('div');
+                row.className = 'movieRow';
                 row.style = 'display: flex; padding: 10px; align-items: center; border-bottom: 1px solid #333; min-height: 50px;';
                 
                 const status = movie.IsPlayed ? (movie.HasIgnore ? '<span style="color: orange;">Watched (No Sync)</span>' : '<span style="color: #6fb03e;">Watched (Synced)</span>') : '<span style="color: #aaa;">Unwatched</span>';
@@ -224,11 +225,16 @@ export default function (view, params) {
     }
 
     function markWatched(btn, userId, playlistId, movieId, watched) {
+        console.log('MarkWatched triggered:', { movieId, watched });
         const url = ApiClient.getUrl('Jellyfin.Plugin.LetterboxdLog/MarkWatchedLocally');
         const data = { UserId: userId, MovieId: movieId, Watched: watched };
 
         // Optimistic UI Update
-        const row = btn.closest('div[style*="flex"]');
+        const row = btn.closest('.movieRow');
+        if (!row) {
+            console.error('Could not find movieRow for button', btn);
+            return;
+        }
         const statusText = row.querySelector('.statusText');
         const btnText = btn.querySelector('span');
         
