@@ -138,5 +138,18 @@ namespace LetterboxdLog.Tests
             await Assert.ThrowsAsync<InvalidOperationException>(() => _api.SearchFilmByTmdbId(tmdbId));
         }
 
+        [Theory]
+        [InlineData("Fight Club", "fight-club")]
+        [InlineData("Léon", "leon")]
+        [InlineData("Léon: The Professional", "leon-the-professional")]
+        [InlineData("Amélie", "amelie")]
+        [InlineData("Incredibles 2", "incredibles-2")]
+        [InlineData("l%C3%A9on", "leon")]
+        [InlineData("Film_Title", "film-title")]
+        public void NormalizeSlug_ShouldReturnCorrectSlug(string input, string expected)
+        {
+            var result = LetterboxdApi.NormalizeSlug(input);
+            Assert.Equal(expected, result);
+        }
     }
 }

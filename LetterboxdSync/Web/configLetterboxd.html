@@ -1,100 +1,114 @@
 <div id="LetterboxdLogConfigPage" data-role="page" class="page type-interior pluginConfigurationPage withTabs"
     data-controller="__plugin/configLetterboxdjs">
-    <div data-role="content">
-        <div class="content-primary">
-            <form id="LetterboxdLogConfigForm">
-                <div>
-                    <h2 class="sectionTitle sectionTitle-cards"><b>LetterboxdLog</b></h2>
 
-                    <div class="selectContainer">
-                        <label class="inputLabel inputLabelUnfocused" for="usersJellyfin">${LabelUsername}
-                            Jellyfin</label>
-                        <select is="emby-select" id="usersJellyfin" name="UsersJellyfin"
-                            class="emby-select-withcolor emby-select" title="Select a Jellyfin user">
-                            <div class="fieldDescription">Select the user you want to configure the integration</div>
-                        </select>
-                    </div>
-
-                    <h3>Letterboxd Login</h3>
-                    <div class="inputContainer">
-                        <input is="emby-input" type="text" id="username" label="${LabelUsername} Letterboxd"
-                            title="${LabelUsername} Letterboxd" />
-                    </div>
-                    <div class="inputContainer">
-                        <input is="emby-input" type="password" id="password" label="${LabelPassword} Letterboxd"
-                            title="${LabelPassword} Letterboxd" />
-                    </div>
-
-                    <h3>Options</h3>
-                    <div class="checkboxContainer">
-                        <label>
-                            <input is="emby-checkbox" type="checkbox" id="enable" title="Enable synchronization" />
-                            <span>Enable</span>
-                        </label>
-                        <div class="fieldDescription checkboxFieldDescription"> When active, it synchronizes the films
-                            watched by the selected user </div>
-                    </div>
-                    <div class="checkboxContainer">
-                        <label>
-                            <input is="emby-checkbox" type="checkbox" id="sendfavorite" title="Send favorite status" />
-                            <span>Send Favorite</span>
-                        </label>
-                        <div class="fieldDescription checkboxFieldDescription"> When active it sends favorite status
-                        </div>
-                    </div>
-
-                    <h3>Date Filtering</h3>
-                    <div class="checkboxContainer">
-                        <label>
-                            <input is="emby-checkbox" type="checkbox" id="enabledatefilter"
-                                title="Enable date filtering" />
-                            <span>Enable Date Filtering</span>
-                        </label>
-                        <div class="fieldDescription checkboxFieldDescription"> Only sync movies played within the
-                            specified number of days </div>
-                    </div>
-                    <div class="inputContainer">
-                        <input is="emby-input" type="number" id="datefilterdays" label="Days to look back" min="1"
-                            max="365" title="Number of days to look back (1-365)" />
-                        <div class="fieldDescription">Number of days to look back for played movies (1-365)</div>
-                    </div>
-
-                    <div class="inputContainer">
-                        <input is="emby-input" type="number" id="timezoneoffset" label="Timezone Offset (Hours)"
-                            min="-12" max="14" title="Timezone Offset in hours" />
-                        <div class="fieldDescription">Adjust the logged date by this many hours (e.g., -8 for PST).
-                            Useful for logging late-night watches on the correct day.</div>
-                    </div>
-
-                    <h3>Cloudflare Bypass (Recommended)</h3>
-                    <div class="inputContainer">
-                        <input is="emby-input" type="text" id="cookiesraw" label="Raw Cookies"
-                            title="Raw cookie string" />
-                        <div class="fieldDescription">Paste the full 'Cookie' string from your browser dev tools here to
-                            bypass Cloudflare.</div>
-                    </div>
-                    <div class="inputContainer">
-                        <input is="emby-input" type="text" id="cookiesuseragent" label="Custom User Agent"
-                            title="Custom user agent string" />
-                        <div class="fieldDescription">Paste your browser's 'User-Agent' string here.</div>
-                    </div>
-
-                    <h3>Legacy Auth Fallback</h3>
-                    <div class="inputContainer">
-                        <input is="emby-input" type="text" id="cookie" label="Legacy Cookie" title="Legacy cookie" />
-                    </div>
-                    <div class="inputContainer">
-                        <input is="emby-input" type="text" id="useragent" label="Legacy User-Agent"
-                            title="Legacy user agent" />
-                    </div>
-
-                    <div>
-                        <button id="save-button" is="emby-button" type="submit" class="raised button-submit block">
-                            <span>${Save}</span>
-                        </button>
-                    </div>
-                </div>
-            </form>
+    <div class="fixed-header">
+        <div class="emby-tabs">
+            <div class="emby-tabs-slider">
+                <button is="emby-button" draggable="false" class="emby-tab-button emby-tab-button-active" data-index="0">
+                    <div class="emby-tab-button-content">Settings</div>
+                </button>
+                <button is="emby-button" draggable="false" class="emby-tab-button" data-index="1">
+                    <div class="emby-tab-button-content">Media Library</div>
+                </button>
+            </div>
         </div>
     </div>
-</div>
+
+    <div data-role="content">
+        <div class="content-primary">
+            <!-- Settings Tab -->
+            <div id="SettingsTab" class="tabContent">
+                <form id="LetterboxdLogConfigForm">
+                    <div>
+                        <h2 class="sectionTitle"><b>Settings</b></h2>
+
+                        <div class="selectContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="usersJellyfin">${LabelUsername} Jellyfin</label>
+                            <select is="emby-select" id="usersJellyfin" name="UsersJellyfin" class="emby-select-withcolor emby-select" title="Select a Jellyfin user"></select>
+                            <div class="fieldDescription">Select the user you want to configure the integration</div>
+                        </div>
+
+                        <h3>Letterboxd Login</h3>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="text" id="username" label="${LabelUsername} Letterboxd" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="password" id="password" label="${LabelPassword} Letterboxd" />
+                        </div>
+
+                        <h3>Options</h3>
+                        <div class="checkboxContainer">
+                            <label>
+                                <input is="emby-checkbox" type="checkbox" id="enable" />
+                                <span>Enable Sync</span>
+                            </label>
+                            <div class="fieldDescription checkboxFieldDescription">Sync movies played within the filter window.</div>
+                        </div>
+                        <div class="checkboxContainer">
+                            <label>
+                                <input is="emby-checkbox" type="checkbox" id="sendfavorite" />
+                                <span>Send Favorite</span>
+                            </label>
+                        </div>
+
+                        <h3>Filtering & Timezone</h3>
+                        <div class="checkboxContainer">
+                            <label>
+                                <input is="emby-checkbox" type="checkbox" id="enabledatefilter" />
+                                <span>Enable Date Filter</span>
+                            </label>
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="datefilterdays" label="Days to Look Back" min="1" max="365" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="number" id="timezoneoffset" label="Timezone Offset (Hours)" min="-12" max="14" />
+                            <div class="fieldDescription">Adjust the logged date (e.g., -8 for PST).</div>
+                        </div>
+
+                        <h3>Cloudflare Bypass</h3>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="text" id="cookiesraw" label="Raw Cookies (Paste from Browser)" />
+                        </div>
+                        <div class="inputContainer">
+                            <input is="emby-input" type="text" id="cookiesuseragent" label="Custom User Agent" />
+                        </div>
+
+                        <div class="inputContainer" style="display:none">
+                            <input is="emby-input" type="text" id="cookie" label="Legacy Cookie" />
+                            <input is="emby-input" type="text" id="useragent" label="Legacy User-Agent" />
+                        </div>
+
+                        <div>
+                            <button id="save-button" is="emby-button" type="submit" class="raised button-submit block">
+                                <span>${Save}</span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Media Library Tab -->
+            <div id="MediaLibraryTab" class="tabContent hide">
+                <h2 class="sectionTitle"><b>Media Library Management</b></h2>
+                <div class="fieldDescription">Mark movies as watched in Jellyfin without syncing them to Letterboxd.</div>
+
+                <div class="selectContainer">
+                    <label class="inputLabel" for="libraryUserSelect">User</label>
+                    <select is="emby-select" id="libraryUserSelect" class="emby-select-withcolor emby-select"></select>
+                </div>
+
+                <div id="movieListContainer" class="paperList" style="margin-top: 2em; max-height: 600px; overflow-y: auto;">
+                    <div class="movieListHeader" style="display: flex; padding: 10px; font-weight: bold; border-bottom: 1px solid #333;">
+                        <div style="flex: 2;">Title</div>
+                        <div style="flex: 1;">Status</div>
+                        <div style="flex: 1; text-align: right;">Action</div>
+                    </div>
+                    <div id="movieListBody">
+                        <div style="padding: 20px; text-align: center;">Loading movies...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

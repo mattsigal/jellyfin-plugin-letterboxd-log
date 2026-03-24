@@ -395,7 +395,7 @@ public class LetterboxdApi : IDisposable
             throw new InvalidOperationException($"Search page resolved to non-film URL: '{filmUrl}'");
         }
 
-        string filmSlug = segments[1];
+        string filmSlug = NormalizeSlug(segments[1]);
 
         using (var filmRequest = new HttpRequestMessage(HttpMethod.Get, $"/film/{filmSlug}/"))
         {
@@ -710,6 +710,40 @@ public class LetterboxdApi : IDisposable
         }
 
         _csrf = token;
+    }
+
+    public static string NormalizeSlug(string slug)
+    {
+        if (string.IsNullOrWhiteSpace(slug))
+        {
+            return slug;
+        }
+
+        // Decode in case it's percent-encoded
+        slug = WebUtility.UrlDecode(slug);
+
+        // Normalize to decompose accented characters (e.g., 'é' -> 'e' + accent)
+        var normalizedString = slug.Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder();
+
+        foreach (var c in normalizedString)
+        {
+            var category = CharUnicodeInfo.GetUnicodeCategory(c);
+            if (category != UnicodeCategory.NonSpacingMark)
+            {
+                // Letterboxd slugs are lowercase ASCII, digits, and hyphens.
+                if ((c >= 'a' && (int)c <= 'z') || (c >= 'A' && (int)c <= 'Z') || (c >= '0' && (int)c <= '9') || c == '-')
+                {
+                    sb.Append(c);
+                }
+                else if (c == ' ' || c == '_' || (int)c == ':') // Extra safety for non-slugified input segments
+                {
+                    sb.Append('-');
+                }
+            }
+        }
+
+        return sb.ToString().Normalize(NormalizationForm.FormC).ToLowerInvariant().Replace("--", "-").Trim('-');
     }
 
     private void SetNavigationHeaders(HttpRequestHeaders headers, string site = "none", string? referrer = null)
