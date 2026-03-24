@@ -28,12 +28,6 @@
                             <div class="fieldDescription">Select the user you want to configure the integration</div>
                         </div>
 
-                        <div class="selectContainer">
-                            <label class="inputLabel" for="selectPlaylist">Select Playlist</label>
-                            <select is="emby-select" id="selectPlaylist" class="emby-select-withcolor emby-select"></select>
-                            <div class="fieldDescription">Select a playlist to manage membership in the Media Library view.</div>
-                        </div>
-
                         <h3>Letterboxd Login</h3>
                         <div class="inputContainer">
                             <input is="emby-input" type="text" id="username" label="${LabelUsername} Letterboxd" />
@@ -102,6 +96,12 @@
                 <div class="selectContainer">
                     <label class="inputLabel" for="libraryUserSelect">User</label>
                     <select is="emby-select" id="libraryUserSelect" class="emby-select-withcolor emby-select"></select>
+                </div>
+
+                <div class="selectContainer">
+                    <label class="inputLabel" for="selectPlaylist">Select Playlist</label>
+                    <select is="emby-select" id="selectPlaylist" class="emby-select-withcolor emby-select"></select>
+                    <div class="fieldDescription">Select a playlist to manage membership for the movies below.</div>
                 </div>
 
                 <div id="movieListContainer" class="paperList" style="margin-top: 2em; max-height: 700px; overflow-y: auto;">
