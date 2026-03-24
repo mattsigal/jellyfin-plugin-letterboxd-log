@@ -8,6 +8,14 @@
     "category": "Metadata",
     "versions": [
       {
+        "version": "1.17.1.3",
+        "changelog": "- Bump to v1.17.1.3: Move playlist select to Media Library tab, fix table alignment and checkbox styling, and opt into Node 24 in publish.yaml (51d4b33)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.17.1.3/LetterboxdLog-v1.17.1.3.zip",
+        "checksum": "dc1483fedcc8fb2228a8b9b00b32235c",
+        "timestamp": "2026-03-24T07:42:10Z"
+      },
+      {
         "version": "1.17.1.2",
         "changelog": "- Bump to v1.17.1.2: Refactor API request models, fix UserItemData namespace and required Key, fix StyleCop SA1503 and CA1307 (33b6923)",
         "targetAbi": "10.11.0.0",
