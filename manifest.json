@@ -8,6 +8,14 @@
     "category": "Metadata",
     "versions": [
       {
+        "version": "1.17.4.0",
+        "changelog": "- Bump to v1.17.4.0: Fix wrong slug/filmId for redirected films (Léon) (8f20afc)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.17.4.0/LetterboxdLog-v1.17.4.0.zip",
+        "checksum": "4e297d0b2c1dd1d5b1cf7a5196ecf92b",
+        "timestamp": "2026-03-24T20:30:39Z"
+      },
+      {
         "version": "1.17.3.0",
         "changelog": "- Bump to v1.17.3.0: Fix diary POST 404 and add diagnostics (bc44bb1)",
         "targetAbi": "10.11.0.0",
