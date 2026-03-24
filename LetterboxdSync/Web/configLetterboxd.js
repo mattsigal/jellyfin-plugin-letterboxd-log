@@ -7,10 +7,10 @@ export default function (view, params) {
     const style = document.createElement('style');
     style.textContent = `
         #LetterboxdLogConfigPage {
-            padding-top: 55px !important;
+            padding-top: 65px !important;
         }
         .fixed-header {
-            top: 55px !important;
+            top: 65px !important;
         }
         .emby-tab-button-active {
             background: #00a4dc !important;
@@ -51,14 +51,16 @@ export default function (view, params) {
         ApiClient.getJSON(playlistUrl).then(playlists => {
             playlistSelect.innerHTML = '';
             if (playlists.length > 0) {
-                playlists.forEach(p => {
+                let huxIndex = -1;
+                playlists.forEach((p, index) => {
                     const opt = document.createElement('option');
                     opt.value = p.Id;
                     opt.textContent = p.Name;
+                    if (p.Name.toLowerCase().includes('hux list')) huxIndex = index;
                     playlistSelect.appendChild(opt);
                 });
-                // Default to first one
-                playlistSelect.selectedIndex = 0;
+                // Default to Hux List if found, otherwise first one
+                playlistSelect.selectedIndex = (huxIndex !== -1) ? huxIndex : 0;
             } else {
                 const opt = document.createElement('option');
                 opt.textContent = 'No Playlists Found';
@@ -175,27 +177,27 @@ export default function (view, params) {
                 const actionClass = movie.IsPlayed && movie.HasIgnore ? 'button-flat' : 'button-accent';
                 const playlistChecked = movie.IsInPlaylist ? 'checked' : '';
 
-                row.innerHTML = `
-                    <div style="flex: 2;">
-                        <div style="font-weight: 500;">${movie.Name}</div>
-                        <div style="font-size: 0.85em; color: #888;">${movie.Year || ''}</div>
-                    </div>
-                    <div style="flex: 1;">${status}</div>
-                    <div style="flex: 1; text-align: center;">
-                        <input type="checkbox" class="chkPlaylist" data-id="${movie.Id}" ${playlistChecked} />
-                    </div>
-                    <div style="flex: 1; text-align: right;">
-                        <button is="emby-button" class="raised ${actionClass} btnMark" style="margin: 0;" data-id="${movie.Id}" data-watched="${!(movie.IsPlayed && movie.HasIgnore)}">
-                            <span>${actionLabel}</span>
-                        </button>
-                    </div>
-                `;
-                body.appendChild(row);
+                    row.innerHTML = `
+                        <div style="flex: 2;">
+                            <div style="font-weight: 500;">${movie.Name}</div>
+                            <div style="font-size: 0.85em; color: #888;">${movie.Year || ''}</div>
+                        </div>
+                        <div style="flex: 1;" class="statusText">${status}</div>
+                        <div style="flex: 1; text-align: center;">
+                            <input type="checkbox" class="chkPlaylist" data-id="${movie.Id}" ${playlistChecked} />
+                        </div>
+                        <div style="flex: 1; text-align: right;">
+                            <button is="emby-button" class="raised ${actionClass} btnMark" style="margin: 0;" data-id="${movie.Id}" data-watched="${!(movie.IsPlayed && movie.HasIgnore)}">
+                                <span>${actionLabel}</span>
+                            </button>
+                        </div>
+                    `;
+                    body.appendChild(row);
             });
 
             body.querySelectorAll('.btnMark').forEach(btn => {
                 btn.addEventListener('click', function() {
-                    markWatched(userId, playlistId, this.getAttribute('data-id'), this.getAttribute('data-watched') === 'true');
+                    markWatched(this, userId, playlistId, this.getAttribute('data-id'), this.getAttribute('data-watched') === 'true');
                 });
             });
 
@@ -221,22 +223,37 @@ export default function (view, params) {
         });
     }
 
-    function markWatched(userId, playlistId, movieId, watched) {
-        Dashboard.showLoadingMsg();
+    function markWatched(btn, userId, playlistId, movieId, watched) {
         const url = ApiClient.getUrl('Jellyfin.Plugin.LetterboxdLog/MarkWatchedLocally');
         const data = { UserId: userId, MovieId: movieId, Watched: watched };
+
+        // Optimistic UI Update
+        const row = btn.closest('div[style*="flex"]');
+        const statusText = row.querySelector('.statusText');
+        const btnText = btn.querySelector('span');
+        
+        if (watched) {
+            statusText.innerHTML = '<span style="color: orange;">Watched (No Sync)</span>';
+            btnText.textContent = 'Reset Status';
+            btn.classList.remove('button-accent');
+            btn.classList.add('button-flat');
+            btn.setAttribute('data-watched', 'false');
+        } else {
+            statusText.innerHTML = '<span style="color: #aaa;">Unwatched</span>';
+            btnText.textContent = 'Mark Watched (No Sync)';
+            btn.classList.remove('button-flat');
+            btn.classList.add('button-accent');
+            btn.setAttribute('data-watched', 'true');
+        }
 
         ApiClient.ajax({
             type: 'POST',
             url: url,
             data: JSON.stringify(data),
             contentType: 'application/json'
-        }).then(() => {
-            Dashboard.hideLoadingMsg();
-            loadMovies(userId, playlistId);
         }).catch(err => {
-            Dashboard.hideLoadingMsg();
             Dashboard.alert('Error updating movie status');
+            // Revert on error? Or just leave it for user to refresh.
         });
     }
 
