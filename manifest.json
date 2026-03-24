@@ -8,6 +8,14 @@
     "category": "Metadata",
     "versions": [
       {
+        "version": "1.18.0.0",
+        "changelog": "- v1.18.0.0: Migrate to Letterboxd's new JSON API (4fd0b2e)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.18.0.0/LetterboxdLog-v1.18.0.0.zip",
+        "checksum": "8037e30dc490920c263d26991f21a92d",
+        "timestamp": "2026-03-24T22:13:11Z"
+      },
+      {
         "version": "1.17.4.0",
         "changelog": "- Bump to v1.17.4.0: Fix wrong slug/filmId for redirected films (Léon) (8f20afc)",
         "targetAbi": "10.11.0.0",
