@@ -8,6 +8,14 @@
     "category": "Metadata",
     "versions": [
       {
+        "version": "1.17.2.0",
+        "changelog": "- Step to v1.17.2.0: Fix 404 by adding trailing slash to POST endpoint (e4bc215)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.17.2.0/LetterboxdLog-v1.17.2.0.zip",
+        "checksum": "ba82e41b4dc1a2edf60009e1faed0873",
+        "timestamp": "2026-03-24T19:40:54Z"
+      },
+      {
         "version": "1.17.1.9",
         "changelog": "- Bump to v1.17.1.9: Add URL diagnostics for 404 troubleshooting (19ff30f)",
         "targetAbi": "10.11.0.0",
