@@ -8,6 +8,14 @@
     "category": "Metadata",
     "versions": [
       {
+        "version": "1.17.1.6",
+        "changelog": "- Bump to v1.17.1.6: Silent Mark Watched updates and default playlist selection (83a0762)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.17.1.6/LetterboxdLog-v1.17.1.6.zip",
+        "checksum": "87e04e9679aa7edd28a6c29dc7d37d51",
+        "timestamp": "2026-03-24T08:06:48Z"
+      },
+      {
         "version": "1.17.1.5",
         "changelog": "- Bump to v1.17.1.5: Final playlist sync fix using GetItemList and header CSS offset (55px) (0bc9249)",
         "targetAbi": "10.11.0.0",
