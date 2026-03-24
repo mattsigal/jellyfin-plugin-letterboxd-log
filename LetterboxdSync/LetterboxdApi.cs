@@ -496,7 +496,14 @@ public class LetterboxdApi : IDisposable
 
         for (int attempt = 0; attempt < 3; attempt++)
         {
-            await RefreshCsrfFromFilmPageAsync(filmSlug).ConfigureAwait(false);
+            try
+            {
+                await RefreshCsrfFromFilmPageAsync(filmSlug).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Failed to refresh CSRF from /film/{filmSlug}/: {ex.Message}", ex);
+            }
 
             using (var request = new HttpRequestMessage(HttpMethod.Post, url))
             {
@@ -548,7 +555,7 @@ public class LetterboxdApi : IDisposable
                             throw new InvalidOperationException("403 Forbidden during diary entry: " + body);
                         }
 
-                        throw new InvalidOperationException($"Letterboxd returned {(int)response.StatusCode}: {body}");
+                        throw new InvalidOperationException($"Letterboxd returned {(int)response.StatusCode} on {request.RequestUri}: {body}");
                     }
 
                     using (JsonDocument doc = JsonDocument.Parse(body))
@@ -660,6 +667,10 @@ public class LetterboxdApi : IDisposable
         using var request = new HttpRequestMessage(HttpMethod.Get, $"/film/{filmSlug}/");
         SetNavigationHeaders(request.Headers, "same-origin");
         using var response = await _client.SendAsync(request).ConfigureAwait(false);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            throw new InvalidOperationException($"Film page not found: {request.RequestUri}");
+        }
         var html = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
 
         // Try JS variable and hidden input from the page HTML
