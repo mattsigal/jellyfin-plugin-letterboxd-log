@@ -10,11 +10,12 @@ permissions:
 
 env:
   DOTNET_VERSION: '9.0.x'
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     outputs:
       release-version: ${{ steps.extract-version.outputs.version }}
     steps:
@@ -62,6 +63,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: prd
     needs: build
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     steps:
       - uses: actions/checkout@v4.2.2
         with:
