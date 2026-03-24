@@ -6,12 +6,18 @@ export default function (view, params) {
     // Fix tab colors and spacing
     const style = document.createElement('style');
     style.textContent = `
+        #LetterboxdLogConfigPage {
+            padding-top: 55px !important;
+        }
+        .fixed-header {
+            top: 55px !important;
+        }
         .emby-tab-button-active {
             background: #00a4dc !important;
             color: white !important;
         }
         .tabContent {
-            margin-top: 1em;
+            margin-top: 1.5em;
         }
         .movieListHeader {
             background: #252525 !important;

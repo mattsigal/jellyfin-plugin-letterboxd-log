@@ -106,10 +106,10 @@ public class LetterboxdLogController : ControllerBase
             var playlist = _libraryManager.GetItemById(playlistGuid) as Playlist;
             if (playlist != null)
             {
-                var children = _libraryManager.GetItemList(new InternalItemsQuery(user)
+                var children = playlist.GetItemList(new InternalItemsQuery(user)
                 {
-                    Parent = playlist,
-                    Recursive = false
+                    Recursive = false,
+                    DtoOptions = new MediaBrowser.Controller.Dto.DtoOptions(true)
                 });
                 foreach (var child in children)
                 {
