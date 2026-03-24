@@ -315,7 +315,7 @@ public class LetterboxdLogSyncTask : IScheduledTask
                             // human-like delay between films
                             await Task.Delay(1000 + Random.Shared.Next(2000), cancellationToken).ConfigureAwait(false);
 
-                            await api.MarkAsWatched(filmResult.FilmSlug, filmResult.FilmId, adjustedViewingDate, tags, favorite, rating: null).ConfigureAwait(false);
+                            await api.MarkAsWatched(filmResult.FilmSlug, filmResult.FilmId, adjustedViewingDate, tags, favorite, rating: null, log: msg => _logger.LogInformation("[MarkAsWatched] {Message}", msg)).ConfigureAwait(false);
 
                             // Successfully pushed — cache it
                             if (_syncCache.TryAdd(cacheKey, DateTime.UtcNow))
