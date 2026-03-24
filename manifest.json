@@ -8,6 +8,14 @@
     "category": "Metadata",
     "versions": [
       {
+        "version": "1.17.1.5",
+        "changelog": "- Bump to v1.17.1.5: Final playlist sync fix using GetItemList and header CSS offset (55px) (0bc9249)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.17.1.5/LetterboxdLog-v1.17.1.5.zip",
+        "checksum": "7572fd16dadfe834756af74fb469b58b",
+        "timestamp": "2026-03-24T07:57:18Z"
+      },
+      {
         "version": "1.17.1.4",
         "changelog": "- Bump to v1.17.1.4: Final CI warning suppression at job level (25bfcf2)",
         "targetAbi": "10.11.0.0",
