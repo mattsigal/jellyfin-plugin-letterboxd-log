@@ -37,11 +37,11 @@ export default function (view, params) {
     `;
     view.appendChild(style);
 
-    view.addEventListener('viewshow', function (e) {
+    function initPage() {
         const selectUsers = view.querySelector('#usersJellyfin');
         const libraryUserSelect = view.querySelector('#libraryUserSelect');
         const playlistSelect = view.querySelector('#selectPlaylist');
-        
+
         selectUsers.innerHTML = '';
         libraryUserSelect.innerHTML = '';
         playlistSelect.innerHTML = '';
@@ -66,7 +66,7 @@ export default function (view, params) {
                 opt.textContent = 'No Playlists Found';
                 playlistSelect.appendChild(opt);
             }
-            
+
             // Trigger load after playlists are ready
             if (libraryUserSelect.value) {
                 loadMovies(libraryUserSelect.value, playlistSelect.value);
@@ -96,7 +96,12 @@ export default function (view, params) {
                 loadAccountConfig(selectUsers.value);
             });
         });
-    });
+    }
+
+    view.addEventListener('viewshow', initPage);
+
+    // Run immediately for first load (viewshow may have already fired before controller attached)
+    initPage();
 
     // Tab Logic
     const tabButtons = view.querySelectorAll('.emby-tab-button');

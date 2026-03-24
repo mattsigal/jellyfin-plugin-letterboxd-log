@@ -50,7 +50,11 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
             new PluginPageInfo
             {
                 Name = "configLetterboxd",
-                EmbeddedResourcePath = $"{GetType().Namespace}.Web.configLetterboxd.html"
+                EmbeddedResourcePath = $"{GetType().Namespace}.Web.configLetterboxd.html",
+                EnableInMainMenu = true,
+                MenuSection = "server",
+                MenuIcon = "movie",
+                DisplayName = "LetterboxdLog"
             },
             new PluginPageInfo
             {
