@@ -491,7 +491,7 @@ public class LetterboxdApi : IDisposable
 
     public async Task MarkAsWatched(string filmSlug, string filmId, DateTime? date, string[] tags, bool liked = false, int? rating = null)
     {
-        string url = "/s/save-diary-entry";
+        string url = "/s/save-diary-entry/";
         DateTime viewingDate = date == null ? DateTime.Now : (DateTime)date;
 
         for (int attempt = 0; attempt < 3; attempt++)
@@ -754,7 +754,29 @@ public class LetterboxdApi : IDisposable
             }
         }
 
-        return sb.ToString().Normalize(NormalizationForm.FormC).ToLowerInvariant().Replace("--", "-", StringComparison.Ordinal).Trim('-');
+        return sb.ToString().Normalize(NormalizationForm.FormC).ToLowerInvariant().Replace("--", "-").Trim('-');
+    }
+
+    public static string RemoveAccents(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return text;
+        }
+
+        var normalizedString = text.Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder();
+
+        foreach (var c in normalizedString)
+        {
+            var category = CharUnicodeInfo.GetUnicodeCategory(c);
+            if (category != UnicodeCategory.NonSpacingMark)
+            {
+                sb.Append(c);
+            }
+        }
+
+        return sb.ToString().Normalize(NormalizationForm.FormC);
     }
 
     private void SetNavigationHeaders(HttpRequestHeaders headers, string site = "none", string? referrer = null)
