@@ -743,7 +743,7 @@ public class LetterboxdApi : IDisposable
             }
         }
 
-        return sb.ToString().Normalize(NormalizationForm.FormC).ToLowerInvariant().Replace("--", "-").Trim('-');
+        return sb.ToString().Normalize(NormalizationForm.FormC).ToLowerInvariant().Replace("--", "-", StringComparison.Ordinal).Trim('-');
     }
 
     private void SetNavigationHeaders(HttpRequestHeaders headers, string site = "none", string? referrer = null)

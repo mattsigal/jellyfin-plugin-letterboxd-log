@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Jellyfin.Data.Enums;
+using LetterboxdLog.API.Models;
 using LetterboxdLog.Configuration;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
@@ -81,9 +82,16 @@ public class LetterboxdLogController : ControllerBase
     [HttpGet("Jellyfin.Plugin.LetterboxdLog/GetMovies")]
     public IActionResult GetMovies([FromQuery] string userId, [FromQuery] string? playlistId = null)
     {
-        if (!Guid.TryParse(userId, out var userGuid)) return BadRequest("Invalid user ID");
+        if (!Guid.TryParse(userId, out var userGuid))
+        {
+            return BadRequest("Invalid user ID");
+        }
+
         var user = _userManager.GetUserById(userGuid);
-        if (user == null) return BadRequest("User not found");
+        if (user == null)
+        {
+            return BadRequest("User not found");
+        }
 
         var movies = _libraryManager.GetItemList(new InternalItemsQuery(user)
         {
@@ -132,15 +140,32 @@ public class LetterboxdLogController : ControllerBase
     [HttpPost("Jellyfin.Plugin.LetterboxdLog/TogglePlaylist")]
     public async Task<IActionResult> TogglePlaylist([FromBody] PlaylistRequest request)
     {
-        if (!Guid.TryParse(request.UserId, out var userGuid)) return BadRequest("Invalid user ID");
+        if (!Guid.TryParse(request.UserId, out var userGuid))
+        {
+            return BadRequest("Invalid user ID");
+        }
+
         var user = _userManager.GetUserById(userGuid);
-        if (user == null) return BadRequest("User not found");
+        if (user == null)
+        {
+            return BadRequest("User not found");
+        }
 
-        if (!Guid.TryParse(request.PlaylistId, out var playlistGuid)) return BadRequest("Invalid playlist ID");
+        if (!Guid.TryParse(request.PlaylistId, out var playlistGuid))
+        {
+            return BadRequest("Invalid playlist ID");
+        }
+
         var playlist = _libraryManager.GetItemById(playlistGuid) as Playlist;
-        if (playlist == null) return BadRequest("Playlist not found");
+        if (playlist == null)
+        {
+            return BadRequest("Playlist not found");
+        }
 
-        if (!Guid.TryParse(request.MovieId, out var movieGuid)) return BadRequest("Invalid movie ID");
+        if (!Guid.TryParse(request.MovieId, out var movieGuid))
+        {
+            return BadRequest("Invalid movie ID");
+        }
 
         if (request.InPlaylist)
         {
@@ -159,19 +184,36 @@ public class LetterboxdLogController : ControllerBase
     [HttpPost("Jellyfin.Plugin.LetterboxdLog/MarkWatchedLocally")]
     public async Task<IActionResult> MarkWatchedLocally([FromBody] MarkWatchedRequest request)
     {
-        if (!Guid.TryParse(request.UserId, out var userGuid)) return BadRequest("Invalid user ID");
-        var user = _userManager.GetUserById(userGuid);
-        if (user == null) return BadRequest("User not found");
+        if (!Guid.TryParse(request.UserId, out var userGuid))
+        {
+            return BadRequest("Invalid user ID");
+        }
 
-        if (!Guid.TryParse(request.MovieId, out var movieGuid)) return BadRequest("Invalid movie ID");
+        var user = _userManager.GetUserById(userGuid);
+        if (user == null)
+        {
+            return BadRequest("User not found");
+        }
+
+        if (!Guid.TryParse(request.MovieId, out var movieGuid))
+        {
+            return BadRequest("Invalid movie ID");
+        }
+
         var movie = _libraryManager.GetItemById(movieGuid) as Movie;
-        if (movie == null) return BadRequest("Movie not found");
+        if (movie == null)
+        {
+            return BadRequest("Movie not found");
+        }
 
         // 1. Update Played Status
         var userData = _userDataManager.GetUserData(user, movie);
         if (userData == null)
         {
-            userData = new MediaBrowser.Model.Entities.UserItemData();
+            userData = new MediaBrowser.Controller.Entities.UserItemData
+            {
+                Key = movie.Id.ToString()
+            };
         }
 
         userData.Played = request.Watched;
@@ -206,51 +248,4 @@ public class LetterboxdLogController : ControllerBase
 
         return Ok();
     }
-}
-
-/// <summary>
-/// Model for Mark Watched request.
-/// </summary>
-public class MarkWatchedRequest
-{
-    /// <summary>
-    /// Gets or sets the user identifier.
-    /// </summary>
-    public string UserId { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Gets or sets the movie identifier.
-    /// </summary>
-    public string MovieId { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Gets or sets a value indicating whether the movie is watched.
-    /// </summary>
-    public bool Watched { get; set; }
-}
-
-/// <summary>
-/// Model for Playlist request.
-/// </summary>
-public class PlaylistRequest
-{
-    /// <summary>
-    /// Gets or sets the user identifier.
-    /// </summary>
-    public string UserId { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Gets or sets the playlist identifier.
-    /// </summary>
-    public string PlaylistId { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Gets or sets the movie identifier.
-    /// </summary>
-    public string MovieId { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Gets or sets a value indicating whether the movie is in the playlist.
-    /// </summary>
-    public bool InPlaylist { get; set; }
 }
