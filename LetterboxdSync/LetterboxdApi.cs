@@ -397,65 +397,53 @@ public class LetterboxdApi : IDisposable
 
         string filmSlug = segments[1];
 
-        using (var filmRequest = new HttpRequestMessage(HttpMethod.Get, $"/film/{filmSlug}/"))
+        // Use the JSON metadata endpoint to get filmId, productionId (lid), and authoritative slug
+        using (var jsonRequest = new HttpRequestMessage(HttpMethod.Get, $"/film/{filmSlug}/json/"))
         {
-            SetNavigationHeaders(filmRequest.Headers, "same-origin", res.RequestMessage?.RequestUri?.ToString());
-            using (var filmRes = await _client.SendAsync(filmRequest).ConfigureAwait(false))
+            jsonRequest.Headers.Accept.Clear();
+            jsonRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            jsonRequest.Headers.TryAddWithoutValidation("X-Requested-With", "XMLHttpRequest");
+            jsonRequest.Headers.TryAddWithoutValidation("sec-fetch-dest", "empty");
+            jsonRequest.Headers.TryAddWithoutValidation("sec-fetch-mode", "cors");
+            jsonRequest.Headers.TryAddWithoutValidation("sec-fetch-site", "same-origin");
+            jsonRequest.Headers.Referrer = new Uri($"https://letterboxd.com/film/{filmSlug}/");
+
+            using (var jsonRes = await _client.SendAsync(jsonRequest).ConfigureAwait(false))
             {
-                if (!filmRes.IsSuccessStatusCode)
+                if (!jsonRes.IsSuccessStatusCode)
                 {
-                    var body = await filmRes.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    var body = await jsonRes.Content.ReadAsStringAsync().ConfigureAwait(false);
                     if (body.Length > 300)
                     {
                         body = body.Substring(0, 300);
                     }
 
-                    throw new InvalidOperationException($"Film page lookup returned {(int)filmRes.StatusCode} for https://letterboxd.com/film/{filmSlug}/. Body: " + body);
+                    throw new InvalidOperationException($"Film JSON lookup returned {(int)jsonRes.StatusCode} for /film/{filmSlug}/json/. Body: " + body);
                 }
 
-                // If the server redirected (e.g. /film/leon-the-professional/ → /film/leon/),
-                // use the final URL's slug so the filmId and slug stay consistent.
-                var finalUri = filmRes.RequestMessage?.RequestUri;
-                if (finalUri != null)
+                var jsonBody = await jsonRes.Content.ReadAsStringAsync().ConfigureAwait(false);
+                using var doc = JsonDocument.Parse(jsonBody);
+                var root = doc.RootElement;
+
+                string filmId = root.GetProperty("id").GetInt32().ToString(CultureInfo.InvariantCulture);
+                string lid = root.GetProperty("lid").GetString() ?? string.Empty;
+                string slug = root.GetProperty("slug").GetString() ?? filmSlug;
+
+                if (string.IsNullOrEmpty(lid))
                 {
-                    var finalSegments = finalUri.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
-                    if (finalSegments.Length >= 2 && finalSegments[0].Equals("film", StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException($"Film JSON for /film/{filmSlug}/ did not contain a 'lid' (production ID).");
+                }
+
+                if (root.TryGetProperty("csrf", out var csrfEl))
+                {
+                    var csrf = csrfEl.GetString();
+                    if (!string.IsNullOrWhiteSpace(csrf))
                     {
-                        filmSlug = finalSegments[1];
+                        _csrf = csrf;
                     }
                 }
 
-                var filmHtml = await filmRes.Content.ReadAsStringAsync().ConfigureAwait(false);
-                var filmDoc = new HtmlDocument();
-                filmDoc.LoadHtml(filmHtml);
-
-                HtmlNode? elForId =
-                    filmDoc.DocumentNode.SelectSingleNode($"//div[@data-film-slug='{filmSlug}']") ??
-                    filmDoc.DocumentNode.SelectSingleNode($"//div[@data-item-link='/film/{filmSlug}/']") ??
-                    filmDoc.DocumentNode.SelectSingleNode("//div[@data-film-id]");
-
-                if (elForId == null)
-                {
-                    throw new InvalidOperationException("The search returned no results (No html element found to get letterboxd filmId)");
-                }
-
-                string filmId = elForId.GetAttributeValue("data-film-id", string.Empty);
-
-                if (string.IsNullOrEmpty(filmId))
-                {
-                    throw new InvalidOperationException("The search returned no results (data-film-id attribute is empty)");
-                }
-
-                // Prefer the slug from the page's own data attribute — this is the
-                // authoritative slug even if our lookup used a deprecated/alternate slug
-                // (e.g. "leon-the-professional" → "leon").
-                string pageSlug = elForId.GetAttributeValue("data-film-slug", string.Empty);
-                if (!string.IsNullOrEmpty(pageSlug))
-                {
-                    filmSlug = pageSlug;
-                }
-
-                return new FilmResult(filmSlug, filmId);
+                return new FilmResult(slug, filmId, lid);
             }
         }
     }
@@ -510,10 +498,10 @@ public class LetterboxdApi : IDisposable
         }
     }
 
-    public async Task MarkAsWatched(string filmSlug, string filmId, DateTime? date, string[] tags, bool liked = false, int? rating = null, Action<string>? log = null)
+    public async Task MarkAsWatched(string filmSlug, string productionId, DateTime? date, string[] tags, bool liked = false, int? rating = null, Action<string>? log = null)
     {
-        string url = "/s/save-diary-entry";
-        DateTime viewingDate = date == null ? DateTime.Now : (DateTime)date;
+        string url = "/api/v0/production-log-entries";
+        DateTime viewingDate = date ?? DateTime.Now;
 
         for (int attempt = 0; attempt < 3; attempt++)
         {
@@ -526,47 +514,42 @@ public class LetterboxdApi : IDisposable
                 throw new InvalidOperationException($"Failed to refresh CSRF from /film/{filmSlug}/: {ex.Message}", ex);
             }
 
-            log?.Invoke($"Attempt {attempt + 1}: POST {url} | slug={filmSlug} filmId={filmId} csrf={_csrf[..Math.Min(8, _csrf.Length)]}... date={viewingDate:yyyy-MM-dd}");
+            log?.Invoke($"Attempt {attempt + 1}: POST {url} | slug={filmSlug} productionId={productionId} csrf={_csrf[..Math.Min(8, _csrf.Length)]}... date={viewingDate:yyyy-MM-dd}");
 
             using (var request = new HttpRequestMessage(HttpMethod.Post, url))
             {
-                request.Headers.Referrer = new Uri(LetterboxdUrl + "/film/" + filmSlug + "/");
+                request.Headers.Referrer = new Uri(LetterboxdUrl + "/film/" + filmSlug + "/review/");
                 request.Headers.TryAddWithoutValidation("Origin", "https://letterboxd.com");
-                request.Headers.TryAddWithoutValidation("X-Requested-With", "XMLHttpRequest");
-                request.Headers.TryAddWithoutValidation("X-CSRF-Token", _csrf);
+                request.Headers.TryAddWithoutValidation("x-csrf-token", _csrf);
                 request.Headers.TryAddWithoutValidation("sec-fetch-dest", "empty");
                 request.Headers.TryAddWithoutValidation("sec-fetch-mode", "cors");
                 request.Headers.TryAddWithoutValidation("sec-fetch-site", "same-origin");
                 request.Headers.Remove("sec-fetch-user");
                 request.Headers.Remove("upgrade-insecure-requests");
                 request.Headers.Accept.Clear();
-                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/javascript"));
-                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*", 0.01));
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*"));
 
-                var formData = new List<KeyValuePair<string, string>>
+                var diaryDetails = new Dictionary<string, object>
                 {
-                    new KeyValuePair<string, string>("__csrf", _csrf),
-                    new KeyValuePair<string, string>("json", "true"),
-                    new KeyValuePair<string, string>("viewingId", string.Empty),
-                    new KeyValuePair<string, string>("filmId", filmId),
-                    new KeyValuePair<string, string>("viewingableUid", $"film:{filmId}"),
-                    new KeyValuePair<string, string>("specifiedDate", "true"),
-                    new KeyValuePair<string, string>("viewingDateStr", viewingDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
-                    new KeyValuePair<string, string>("review", string.Empty),
-                    new KeyValuePair<string, string>("rewatch", "false"),
-                    new KeyValuePair<string, string>("containsSpoilers", "false"),
-                    new KeyValuePair<string, string>("rating", (rating ?? 0).ToString(CultureInfo.InvariantCulture)),
-                    new KeyValuePair<string, string>("liked", liked.ToString().ToLowerInvariant()),
-                    new KeyValuePair<string, string>("tags", string.Empty)
+                    ["diaryDate"] = viewingDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                    ["rewatch"] = false
                 };
 
-                foreach (var tag in tags)
+                var payload = new Dictionary<string, object>
                 {
-                    formData.Add(new KeyValuePair<string, string>("tag", tag));
+                    ["productionId"] = productionId,
+                    ["diaryDetails"] = diaryDetails,
+                    ["tags"] = tags ?? Array.Empty<string>(),
+                    ["like"] = liked
+                };
+
+                if (rating.HasValue && rating.Value > 0)
+                {
+                    payload["rating"] = rating.Value;
                 }
 
-                request.Content = new FormUrlEncodedContent(formData);
+                var jsonPayload = JsonSerializer.Serialize(payload);
+                request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
                 using (var response = await _client.SendAsync(request).ConfigureAwait(false))
                 {
@@ -575,32 +558,57 @@ public class LetterboxdApi : IDisposable
 
                     log?.Invoke($"Response: {status} | BodyLen: {body.Length}");
 
-                    if (status != 200)
+                    if (status == 200 || status == 201)
                     {
-                        if (status == 403)
+                        // New API: 200/201 means success
+                        if (!string.IsNullOrWhiteSpace(body))
                         {
-                            throw new InvalidOperationException("403 Forbidden during diary entry: " + (body.Length > 500 ? body.Substring(0, 500) : body));
+                            try
+                            {
+                                using JsonDocument doc = JsonDocument.Parse(body);
+                                var json = doc.RootElement;
+
+                                // Check for explicit error in response
+                                if (json.TryGetProperty("result", out var resultEl) &&
+                                    resultEl.ValueKind == JsonValueKind.String &&
+                                    resultEl.GetString() == "error")
+                                {
+                                    string message = string.Empty;
+                                    if (json.TryGetProperty("messages", out var msgsEl))
+                                    {
+                                        var sb = new StringBuilder();
+                                        foreach (var m in msgsEl.EnumerateArray())
+                                        {
+                                            sb.Append(m.GetString()).Append(' ');
+                                        }
+
+                                        message = sb.ToString().Trim();
+                                    }
+
+                                    if (attempt < 2 && (message.Contains("expired", StringComparison.OrdinalIgnoreCase) || message.Contains("try again", StringComparison.OrdinalIgnoreCase)))
+                                    {
+                                        await Task.Delay(((attempt + 1) * 5000) + Random.Shared.Next(3000)).ConfigureAwait(false);
+                                        continue;
+                                    }
+
+                                    throw new InvalidOperationException(message);
+                                }
+                            }
+                            catch (JsonException)
+                            {
+                                // Non-JSON 200 response is still success
+                            }
                         }
 
-                        throw new InvalidOperationException($"Letterboxd returned {status} on {url}: " + (body.Length > 500 ? body.Substring(0, 500) : body));
+                        return;
                     }
 
-                    using (JsonDocument doc = JsonDocument.Parse(body))
+                    if (status == 403)
                     {
-                        var json = doc.RootElement;
-                        if (SuccessOperation(json, out string message))
-                        {
-                            return;
-                        }
-
-                        if (attempt < 2 && (message.Contains("expired", StringComparison.OrdinalIgnoreCase) || message.Contains("try again", StringComparison.OrdinalIgnoreCase)))
-                        {
-                            await Task.Delay(((attempt + 1) * 5000) + Random.Shared.Next(3000)).ConfigureAwait(false);
-                            continue;
-                        }
-
-                        throw new InvalidOperationException(message);
+                        throw new InvalidOperationException("403 Forbidden during diary entry: " + (body.Length > 500 ? body.Substring(0, 500) : body));
                     }
+
+                    throw new InvalidOperationException($"Letterboxd returned {status} on {url}: " + (body.Length > 500 ? body.Substring(0, 500) : body));
                 }
             }
         }
@@ -839,28 +847,31 @@ public class LetterboxdApi : IDisposable
 
     private async Task<FilmResult> SearchFilmBySlug(string filmSlug)
     {
-        using (var filmRequest = new HttpRequestMessage(HttpMethod.Get, $"/film/{filmSlug}/"))
+        using (var jsonRequest = new HttpRequestMessage(HttpMethod.Get, $"/film/{filmSlug}/json/"))
         {
-            SetNavigationHeaders(filmRequest.Headers, "same-origin");
-            using (var filmRes = await _client.SendAsync(filmRequest).ConfigureAwait(false))
+            jsonRequest.Headers.Accept.Clear();
+            jsonRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            jsonRequest.Headers.TryAddWithoutValidation("X-Requested-With", "XMLHttpRequest");
+            jsonRequest.Headers.TryAddWithoutValidation("sec-fetch-dest", "empty");
+            jsonRequest.Headers.TryAddWithoutValidation("sec-fetch-mode", "cors");
+            jsonRequest.Headers.TryAddWithoutValidation("sec-fetch-site", "same-origin");
+
+            using (var jsonRes = await _client.SendAsync(jsonRequest).ConfigureAwait(false))
             {
-                if (!filmRes.IsSuccessStatusCode)
+                if (!jsonRes.IsSuccessStatusCode)
                 {
-                    throw new InvalidOperationException($"Film page lookup failed for {filmSlug}");
+                    throw new InvalidOperationException($"Film JSON lookup failed for {filmSlug}");
                 }
 
-                var filmHtml = await filmRes.Content.ReadAsStringAsync().ConfigureAwait(false);
-                var filmDoc = new HtmlDocument();
-                filmDoc.LoadHtml(filmHtml);
+                var jsonBody = await jsonRes.Content.ReadAsStringAsync().ConfigureAwait(false);
+                using var doc = JsonDocument.Parse(jsonBody);
+                var root = doc.RootElement;
 
-                HtmlNode? elForId = filmDoc.DocumentNode.SelectSingleNode("//div[@data-film-id]");
-                if (elForId == null)
-                {
-                    throw new InvalidOperationException("No data-film-id found");
-                }
+                string filmId = root.GetProperty("id").GetInt32().ToString(CultureInfo.InvariantCulture);
+                string lid = root.GetProperty("lid").GetString() ?? string.Empty;
+                string slug = root.GetProperty("slug").GetString() ?? filmSlug;
 
-                string filmId = elForId.GetAttributeValue("data-film-id", string.Empty);
-                return new FilmResult(filmSlug, filmId);
+                return new FilmResult(slug, filmId, lid);
             }
         }
     }

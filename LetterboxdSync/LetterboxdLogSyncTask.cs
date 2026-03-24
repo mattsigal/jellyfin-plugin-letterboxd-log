@@ -295,7 +295,7 @@ public class LetterboxdLogSyncTask : IScheduledTask
 
                 if (filmResult != null)
                 {
-                    _logger.LogDebug("Resolved Letterboxd: {Slug} ({Id}) for {Movie}", filmResult.FilmSlug, filmResult.FilmId, title);
+                    _logger.LogDebug("Resolved Letterboxd: {Slug} (filmId={Id}, productionId={Lid}) for {Movie}", filmResult.FilmSlug, filmResult.FilmId, filmResult.ProductionId, title);
                     try
                     {
                         var dateLastLog = await api.GetDateLastLog(filmResult.FilmSlug).ConfigureAwait(false);
@@ -315,7 +315,7 @@ public class LetterboxdLogSyncTask : IScheduledTask
                             // human-like delay between films
                             await Task.Delay(1000 + Random.Shared.Next(2000), cancellationToken).ConfigureAwait(false);
 
-                            await api.MarkAsWatched(filmResult.FilmSlug, filmResult.FilmId, adjustedViewingDate, tags, favorite, rating: null, log: msg => _logger.LogInformation("[MarkAsWatched] {Message}", msg)).ConfigureAwait(false);
+                            await api.MarkAsWatched(filmResult.FilmSlug, filmResult.ProductionId, adjustedViewingDate, tags, favorite, rating: null, log: msg => _logger.LogInformation("[MarkAsWatched] {Message}", msg)).ConfigureAwait(false);
 
                             // Successfully pushed — cache it
                             if (_syncCache.TryAdd(cacheKey, DateTime.UtcNow))
