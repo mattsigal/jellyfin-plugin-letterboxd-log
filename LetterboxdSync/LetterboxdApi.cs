@@ -413,6 +413,18 @@ public class LetterboxdApi : IDisposable
                     throw new InvalidOperationException($"Film page lookup returned {(int)filmRes.StatusCode} for https://letterboxd.com/film/{filmSlug}/. Body: " + body);
                 }
 
+                // If the server redirected (e.g. /film/leon-the-professional/ → /film/leon/),
+                // use the final URL's slug so the filmId and slug stay consistent.
+                var finalUri = filmRes.RequestMessage?.RequestUri;
+                if (finalUri != null)
+                {
+                    var finalSegments = finalUri.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+                    if (finalSegments.Length >= 2 && finalSegments[0].Equals("film", StringComparison.OrdinalIgnoreCase))
+                    {
+                        filmSlug = finalSegments[1];
+                    }
+                }
+
                 var filmHtml = await filmRes.Content.ReadAsStringAsync().ConfigureAwait(false);
                 var filmDoc = new HtmlDocument();
                 filmDoc.LoadHtml(filmHtml);
@@ -432,6 +444,15 @@ public class LetterboxdApi : IDisposable
                 if (string.IsNullOrEmpty(filmId))
                 {
                     throw new InvalidOperationException("The search returned no results (data-film-id attribute is empty)");
+                }
+
+                // Prefer the slug from the page's own data attribute — this is the
+                // authoritative slug even if our lookup used a deprecated/alternate slug
+                // (e.g. "leon-the-professional" → "leon").
+                string pageSlug = elForId.GetAttributeValue("data-film-slug", string.Empty);
+                if (!string.IsNullOrEmpty(pageSlug))
+                {
+                    filmSlug = pageSlug;
                 }
 
                 return new FilmResult(filmSlug, filmId);
@@ -507,123 +528,78 @@ public class LetterboxdApi : IDisposable
 
             log?.Invoke($"Attempt {attempt + 1}: POST {url} | slug={filmSlug} filmId={filmId} csrf={_csrf[..Math.Min(8, _csrf.Length)]}... date={viewingDate:yyyy-MM-dd}");
 
-            // Use a dedicated handler with AllowAutoRedirect=false to prevent POST→GET downgrade on 301/302
-            using (var noRedirectHandler = new HttpClientHandler
+            using (var request = new HttpRequestMessage(HttpMethod.Post, url))
             {
-                CookieContainer = _cookieContainer,
-                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli,
-                AllowAutoRedirect = false,
-                CheckCertificateRevocationList = true
-            })
-            using (var noRedirectClient = new HttpClient(noRedirectHandler) { BaseAddress = BaseUri })
-            {
-                // Copy default headers from the main client
-                noRedirectClient.DefaultRequestHeaders.UserAgent.Clear();
-                foreach (var ua in _client.DefaultRequestHeaders.UserAgent)
+                request.Headers.Referrer = new Uri(LetterboxdUrl + "/film/" + filmSlug + "/");
+                request.Headers.TryAddWithoutValidation("Origin", "https://letterboxd.com");
+                request.Headers.TryAddWithoutValidation("X-Requested-With", "XMLHttpRequest");
+                request.Headers.TryAddWithoutValidation("X-CSRF-Token", _csrf);
+                request.Headers.TryAddWithoutValidation("sec-fetch-dest", "empty");
+                request.Headers.TryAddWithoutValidation("sec-fetch-mode", "cors");
+                request.Headers.TryAddWithoutValidation("sec-fetch-site", "same-origin");
+                request.Headers.Remove("sec-fetch-user");
+                request.Headers.Remove("upgrade-insecure-requests");
+                request.Headers.Accept.Clear();
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/javascript"));
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*", 0.01));
+
+                var formData = new List<KeyValuePair<string, string>>
                 {
-                    noRedirectClient.DefaultRequestHeaders.UserAgent.Add(ua);
+                    new KeyValuePair<string, string>("__csrf", _csrf),
+                    new KeyValuePair<string, string>("json", "true"),
+                    new KeyValuePair<string, string>("viewingId", string.Empty),
+                    new KeyValuePair<string, string>("filmId", filmId),
+                    new KeyValuePair<string, string>("viewingableUid", $"film:{filmId}"),
+                    new KeyValuePair<string, string>("specifiedDate", "true"),
+                    new KeyValuePair<string, string>("viewingDateStr", viewingDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
+                    new KeyValuePair<string, string>("review", string.Empty),
+                    new KeyValuePair<string, string>("rewatch", "false"),
+                    new KeyValuePair<string, string>("containsSpoilers", "false"),
+                    new KeyValuePair<string, string>("rating", (rating ?? 0).ToString(CultureInfo.InvariantCulture)),
+                    new KeyValuePair<string, string>("liked", liked.ToString().ToLowerInvariant()),
+                    new KeyValuePair<string, string>("tags", string.Empty)
+                };
+
+                foreach (var tag in tags)
+                {
+                    formData.Add(new KeyValuePair<string, string>("tag", tag));
                 }
 
-                using (var request = new HttpRequestMessage(HttpMethod.Post, url))
+                request.Content = new FormUrlEncodedContent(formData);
+
+                using (var response = await _client.SendAsync(request).ConfigureAwait(false))
                 {
-                    request.Headers.Referrer = new Uri(LetterboxdUrl + "/film/" + filmSlug + "/");
-                    request.Headers.TryAddWithoutValidation("Origin", "https://letterboxd.com");
-                    request.Headers.TryAddWithoutValidation("X-Requested-With", "XMLHttpRequest");
-                    request.Headers.TryAddWithoutValidation("X-CSRF-Token", _csrf);
-                    request.Headers.TryAddWithoutValidation("sec-fetch-dest", "empty");
-                    request.Headers.TryAddWithoutValidation("sec-fetch-mode", "cors");
-                    request.Headers.TryAddWithoutValidation("sec-fetch-site", "same-origin");
-                    request.Headers.Accept.Clear();
-                    request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                    request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/javascript"));
-                    request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*", 0.01));
+                    var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    int status = (int)response.StatusCode;
 
-                    var formData = new List<KeyValuePair<string, string>>
-                    {
-                        new KeyValuePair<string, string>("__csrf", _csrf),
-                        new KeyValuePair<string, string>("json", "true"),
-                        new KeyValuePair<string, string>("viewingId", string.Empty),
-                        new KeyValuePair<string, string>("filmId", filmId),
-                        new KeyValuePair<string, string>("viewingableUid", $"film:{filmId}"),
-                        new KeyValuePair<string, string>("specifiedDate", "true"),
-                        new KeyValuePair<string, string>("viewingDateStr", viewingDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
-                        new KeyValuePair<string, string>("review", string.Empty),
-                        new KeyValuePair<string, string>("rewatch", "false"),
-                        new KeyValuePair<string, string>("containsSpoilers", "false"),
-                        new KeyValuePair<string, string>("rating", (rating ?? 0).ToString(CultureInfo.InvariantCulture)),
-                        new KeyValuePair<string, string>("liked", liked.ToString().ToLowerInvariant()),
-                        new KeyValuePair<string, string>("tags", string.Empty)
-                    };
+                    log?.Invoke($"Response: {status} | BodyLen: {body.Length}");
 
-                    foreach (var tag in tags)
+                    if (status != 200)
                     {
-                        formData.Add(new KeyValuePair<string, string>("tag", tag));
+                        if (status == 403)
+                        {
+                            throw new InvalidOperationException("403 Forbidden during diary entry: " + (body.Length > 500 ? body.Substring(0, 500) : body));
+                        }
+
+                        throw new InvalidOperationException($"Letterboxd returned {status} on {url}: " + (body.Length > 500 ? body.Substring(0, 500) : body));
                     }
 
-                    request.Content = new FormUrlEncodedContent(formData);
-
-                    using (var response = await noRedirectClient.SendAsync(request).ConfigureAwait(false))
+                    using (JsonDocument doc = JsonDocument.Parse(body))
                     {
-                        var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                        int status = (int)response.StatusCode;
-
-                        // Log response details for diagnostics
-                        string locationHeader = response.Headers.Location?.ToString() ?? "(none)";
-                        string cfMitigated = response.Headers.TryGetValues("Cf-Mitigated", out var cfVals) ? string.Join(",", cfVals) : "(none)";
-                        log?.Invoke($"Response: {status} | Location: {locationHeader} | Cf-Mitigated: {cfMitigated} | BodyLen: {body.Length}");
-
-                        // Handle redirects manually — re-POST to the redirect target
-                        if (status >= 300 && status < 400 && response.Headers.Location != null)
+                        var json = doc.RootElement;
+                        if (SuccessOperation(json, out string message))
                         {
-                            log?.Invoke($"Server redirected POST to {response.Headers.Location} — following with POST (not GET)");
-                            using (var redirectRequest = new HttpRequestMessage(HttpMethod.Post, response.Headers.Location))
-                            {
-                                redirectRequest.Headers.Referrer = new Uri(LetterboxdUrl + "/film/" + filmSlug + "/");
-                                redirectRequest.Headers.TryAddWithoutValidation("Origin", "https://letterboxd.com");
-                                redirectRequest.Headers.TryAddWithoutValidation("X-Requested-With", "XMLHttpRequest");
-                                redirectRequest.Headers.TryAddWithoutValidation("X-CSRF-Token", _csrf);
-                                redirectRequest.Headers.TryAddWithoutValidation("sec-fetch-dest", "empty");
-                                redirectRequest.Headers.TryAddWithoutValidation("sec-fetch-mode", "cors");
-                                redirectRequest.Headers.TryAddWithoutValidation("sec-fetch-site", "same-origin");
-                                redirectRequest.Headers.Accept.Clear();
-                                redirectRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                                redirectRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/javascript"));
-                                redirectRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*", 0.01));
-                                redirectRequest.Content = new FormUrlEncodedContent(formData);
-
-                                using var redirectResponse = await noRedirectClient.SendAsync(redirectRequest).ConfigureAwait(false);
-                                body = await redirectResponse.Content.ReadAsStringAsync().ConfigureAwait(false);
-                                status = (int)redirectResponse.StatusCode;
-                                log?.Invoke($"Redirect response: {status} | BodyLen: {body.Length}");
-                            }
+                            return;
                         }
 
-                        if (status != 200)
+                        if (attempt < 2 && (message.Contains("expired", StringComparison.OrdinalIgnoreCase) || message.Contains("try again", StringComparison.OrdinalIgnoreCase)))
                         {
-                            if (status == 403)
-                            {
-                                throw new InvalidOperationException("403 Forbidden during diary entry: " + (body.Length > 500 ? body.Substring(0, 500) : body));
-                            }
-
-                            throw new InvalidOperationException($"Letterboxd returned {status} on {url}: " + (body.Length > 500 ? body.Substring(0, 500) : body));
+                            await Task.Delay(((attempt + 1) * 5000) + Random.Shared.Next(3000)).ConfigureAwait(false);
+                            continue;
                         }
 
-                        using (JsonDocument doc = JsonDocument.Parse(body))
-                        {
-                            var json = doc.RootElement;
-                            if (SuccessOperation(json, out string message))
-                            {
-                                return;
-                            }
-
-                            if (attempt < 2 && (message.Contains("expired", StringComparison.OrdinalIgnoreCase) || message.Contains("try again", StringComparison.OrdinalIgnoreCase)))
-                            {
-                                await Task.Delay(((attempt + 1) * 5000) + Random.Shared.Next(3000)).ConfigureAwait(false);
-                                continue;
-                            }
-
-                            throw new InvalidOperationException(message);
-                        }
+                        throw new InvalidOperationException(message);
                     }
                 }
             }
