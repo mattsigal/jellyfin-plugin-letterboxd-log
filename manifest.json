@@ -8,6 +8,14 @@
     "category": "Metadata",
     "versions": [
       {
+        "version": "1.17.1.2",
+        "changelog": "- Bump to v1.17.1.2: Refactor API request models, fix UserItemData namespace and required Key, fix StyleCop SA1503 and CA1307 (33b6923)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.17.1.2/LetterboxdLog-v1.17.1.2.zip",
+        "checksum": "2001e909b4bba00bd8bb4750d80bfb3e",
+        "timestamp": "2026-03-24T07:29:37Z"
+      },
+      {
         "version": "1.17.0.0",
         "changelog": "- Update to v1.17.0.0: Fix accented titles and add Media Library management (de2e979)",
         "targetAbi": "10.11.0.0",
