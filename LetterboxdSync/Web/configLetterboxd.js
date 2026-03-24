@@ -16,6 +16,17 @@ export default function (view, params) {
         .movieListHeader {
             background: #252525 !important;
             border-bottom: 2px solid #555 !important;
+            align-items: center;
+        }
+        .chkPlaylist {
+            width: 20px !important;
+            height: 20px !important;
+            margin: 0 auto !important;
+            display: block !important;
+            cursor: pointer;
+        }
+        .paperList {
+            background: #111;
         }
     `;
     view.appendChild(style);
@@ -32,6 +43,7 @@ export default function (view, params) {
         // Load Playlists
         const playlistUrl = ApiClient.getUrl('Jellyfin.Plugin.LetterboxdLog/GetPlaylists');
         ApiClient.getJSON(playlistUrl).then(playlists => {
+            playlistSelect.innerHTML = '';
             if (playlists.length > 0) {
                 playlists.forEach(p => {
                     const opt = document.createElement('option');
@@ -39,12 +51,17 @@ export default function (view, params) {
                     opt.textContent = p.Name;
                     playlistSelect.appendChild(opt);
                 });
-                // Default to first one (oldest/default)
+                // Default to first one
                 playlistSelect.selectedIndex = 0;
             } else {
                 const opt = document.createElement('option');
                 opt.textContent = 'No Playlists Found';
                 playlistSelect.appendChild(opt);
+            }
+            
+            // Trigger load after playlists are ready
+            if (libraryUserSelect.value) {
+                loadMovies(libraryUserSelect.value, playlistSelect.value);
             }
         });
 
@@ -66,10 +83,9 @@ export default function (view, params) {
                     }
                 }
                 loadAccountConfig(selectUsers.value);
-                loadMovies(libraryUserSelect.value, playlistSelect.value);
+                // loadMovies will be triggered by playlistSelect loading completion
             }).catch(() => {
                 loadAccountConfig(selectUsers.value);
-                loadMovies(libraryUserSelect.value, playlistSelect.value);
             });
         });
     });
@@ -126,10 +142,17 @@ export default function (view, params) {
     }
 
     function loadMovies(userId, playlistId) {
+        if (!userId) return;
+        
         const body = view.querySelector('#movieListBody');
         body.innerHTML = '<div style="padding: 20px; text-align: center;">Loading movies...</div>';
 
-        const url = ApiClient.getUrl('Jellyfin.Plugin.LetterboxdLog/GetMovies', { userId: userId, playlistId: playlistId });
+        const params = { userId: userId };
+        if (playlistId && playlistId.length > 5) {
+            params.playlistId = playlistId;
+        }
+
+        const url = ApiClient.getUrl('Jellyfin.Plugin.LetterboxdLog/GetMovies', params);
         ApiClient.getJSON(url).then(movies => {
             body.innerHTML = '';
             if (!movies || movies.length === 0) {
@@ -139,7 +162,7 @@ export default function (view, params) {
 
             movies.forEach(movie => {
                 const row = document.createElement('div');
-                row.style = 'display: flex; padding: 10px; align-items: center; border-bottom: 1px solid #333;';
+                row.style = 'display: flex; padding: 10px; align-items: center; border-bottom: 1px solid #333; min-height: 50px;';
                 
                 const status = movie.IsPlayed ? (movie.HasIgnore ? '<span style="color: orange;">Watched (No Sync)</span>' : '<span style="color: #6fb03e;">Watched (Synced)</span>') : '<span style="color: #aaa;">Unwatched</span>';
                 const actionLabel = movie.IsPlayed && movie.HasIgnore ? 'Reset Status' : 'Mark Watched (No Sync)';
@@ -153,10 +176,10 @@ export default function (view, params) {
                     </div>
                     <div style="flex: 1;">${status}</div>
                     <div style="flex: 1; text-align: center;">
-                        <input is="emby-checkbox" type="checkbox" class="chkPlaylist" data-id="${movie.Id}" ${playlistChecked} />
+                        <input type="checkbox" class="chkPlaylist" data-id="${movie.Id}" ${playlistChecked} />
                     </div>
                     <div style="flex: 1; text-align: right;">
-                        <button is="emby-button" class="raised ${actionClass} btnMark" data-id="${movie.Id}" data-watched="${!(movie.IsPlayed && movie.HasIgnore)}">
+                        <button is="emby-button" class="raised ${actionClass} btnMark" style="margin: 0;" data-id="${movie.Id}" data-watched="${!(movie.IsPlayed && movie.HasIgnore)}">
                             <span>${actionLabel}</span>
                         </button>
                     </div>
