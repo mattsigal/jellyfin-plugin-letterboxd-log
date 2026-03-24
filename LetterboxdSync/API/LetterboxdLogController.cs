@@ -7,6 +7,7 @@ using LetterboxdLog.Configuration;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Library;
+using MediaBrowser.Controller.Playlists;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Querying;
 using Microsoft.AspNetCore.Authorization;
@@ -23,17 +24,20 @@ public class LetterboxdLogController : ControllerBase
     private readonly ILibraryManager _libraryManager;
     private readonly IUserManager _userManager;
     private readonly IUserDataManager _userDataManager;
+    private readonly IPlaylistManager _playlistManager;
     private readonly ILogger<LetterboxdLogController> _logger;
 
     public LetterboxdLogController(
         ILibraryManager libraryManager,
         IUserManager userManager,
         IUserDataManager userDataManager,
+        IPlaylistManager playlistManager,
         ILogger<LetterboxdLogController> logger)
     {
         _libraryManager = libraryManager;
         _userManager = userManager;
         _userDataManager = userDataManager;
+        _playlistManager = playlistManager;
         _logger = logger;
     }
 
@@ -56,15 +60,30 @@ public class LetterboxdLogController : ControllerBase
         }
     }
 
+    [HttpGet("Jellyfin.Plugin.LetterboxdLog/GetPlaylists")]
+    public IActionResult GetPlaylists()
+    {
+        var playlists = _libraryManager.GetItemList(new InternalItemsQuery
+        {
+            IncludeItemTypes = new[] { BaseItemKind.Playlist },
+            Recursive = true
+        }).Where(p => p is Playlist && p.SourceType != SourceType.Channel).Cast<Playlist>();
+
+        var result = playlists.Select(p => new
+        {
+            Id = p.Id.ToString("N"),
+            Name = p.Name
+        }).OrderBy(p => p.Name);
+
+        return Ok(result);
+    }
+
     [HttpGet("Jellyfin.Plugin.LetterboxdLog/GetMovies")]
-    public IActionResult GetMovies([FromQuery] string userId)
+    public IActionResult GetMovies([FromQuery] string userId, [FromQuery] string? playlistId = null)
     {
         if (!Guid.TryParse(userId, out var userGuid)) return BadRequest("Invalid user ID");
         var user = _userManager.GetUserById(userGuid);
-        if (user == null)
-        {
-            return BadRequest("User not found");
-        }
+        if (user == null) return BadRequest("User not found");
 
         var movies = _libraryManager.GetItemList(new InternalItemsQuery(user)
         {
@@ -72,6 +91,24 @@ public class LetterboxdLogController : ControllerBase
             IsVirtualItem = false,
             Recursive = true
         });
+
+        HashSet<Guid> playlistItems = new();
+        if (!string.IsNullOrEmpty(playlistId) && Guid.TryParse(playlistId, out var playlistGuid))
+        {
+            var playlist = _libraryManager.GetItemById(playlistGuid) as Playlist;
+            if (playlist != null)
+            {
+                var children = _libraryManager.GetItemList(new InternalItemsQuery(user)
+                {
+                    Parent = playlist,
+                    Recursive = false
+                });
+                foreach (var child in children)
+                {
+                    playlistItems.Add(child.Id);
+                }
+            }
+        }
 
         var result = movies.Select(m =>
         {
@@ -84,11 +121,39 @@ public class LetterboxdLogController : ControllerBase
                 Year = m.ProductionYear,
                 IsPlayed = userData?.Played ?? false,
                 HasIgnore = tags.Contains(".ignore", StringComparer.OrdinalIgnoreCase),
-                SkipTag = tags.FirstOrDefault(t => t.StartsWith("LetterboxdSkip:", StringComparison.OrdinalIgnoreCase))
+                SkipTag = tags.FirstOrDefault(t => t.StartsWith("LetterboxdSkip:", StringComparison.OrdinalIgnoreCase)),
+                IsInPlaylist = playlistItems.Contains(m.Id)
             };
         }).OrderBy(m => m.Name);
 
         return Ok(result);
+    }
+
+    [HttpPost("Jellyfin.Plugin.LetterboxdLog/TogglePlaylist")]
+    public async Task<IActionResult> TogglePlaylist([FromBody] PlaylistRequest request)
+    {
+        if (!Guid.TryParse(request.UserId, out var userGuid)) return BadRequest("Invalid user ID");
+        var user = _userManager.GetUserById(userGuid);
+        if (user == null) return BadRequest("User not found");
+
+        if (!Guid.TryParse(request.PlaylistId, out var playlistGuid)) return BadRequest("Invalid playlist ID");
+        var playlist = _libraryManager.GetItemById(playlistGuid) as Playlist;
+        if (playlist == null) return BadRequest("Playlist not found");
+
+        if (!Guid.TryParse(request.MovieId, out var movieGuid)) return BadRequest("Invalid movie ID");
+
+        if (request.InPlaylist)
+        {
+            await _playlistManager.AddItemToPlaylistAsync(playlistGuid, new[] { movieGuid }, userGuid).ConfigureAwait(false);
+        }
+        else
+        {
+            // For removal, we try to find the movie in the playlist to get its children if needed,
+            // but many versions support removing by ItemId string if it's a simple playlist.
+            await _playlistManager.RemoveItemFromPlaylistAsync(playlistGuid.ToString(), new[] { request.MovieId }).ConfigureAwait(false);
+        }
+
+        return Ok();
     }
 
     [HttpPost("Jellyfin.Plugin.LetterboxdLog/MarkWatchedLocally")]
@@ -141,5 +206,13 @@ public class LetterboxdLogController : ControllerBase
         public string UserId { get; set; } = string.Empty;
         public string MovieId { get; set; } = string.Empty;
         public bool Watched { get; set; }
+    }
+
+    public class PlaylistRequest
+    {
+        public string UserId { get; set; } = string.Empty;
+        public string PlaylistId { get; set; } = string.Empty;
+        public string MovieId { get; set; } = string.Empty;
+        public bool InPlaylist { get; set; }
     }
 }

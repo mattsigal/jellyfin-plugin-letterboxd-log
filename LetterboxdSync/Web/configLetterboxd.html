@@ -15,7 +15,7 @@
     </div>
 
     <div data-role="content">
-        <div class="content-primary">
+        <div class="content-primary" style="padding-top: 2em;">
             <!-- Settings Tab -->
             <div id="SettingsTab" class="tabContent">
                 <form id="LetterboxdLogConfigForm">
@@ -26,6 +26,12 @@
                             <label class="inputLabel inputLabelUnfocused" for="usersJellyfin">${LabelUsername} Jellyfin</label>
                             <select is="emby-select" id="usersJellyfin" name="UsersJellyfin" class="emby-select-withcolor emby-select" title="Select a Jellyfin user"></select>
                             <div class="fieldDescription">Select the user you want to configure the integration</div>
+                        </div>
+
+                        <div class="selectContainer">
+                            <label class="inputLabel" for="selectPlaylist">Select Playlist</label>
+                            <select is="emby-select" id="selectPlaylist" class="emby-select-withcolor emby-select"></select>
+                            <div class="fieldDescription">Select a playlist to manage membership in the Media Library view.</div>
                         </div>
 
                         <h3>Letterboxd Login</h3>
@@ -63,7 +69,7 @@
                         </div>
                         <div class="inputContainer">
                             <input is="emby-input" type="number" id="timezoneoffset" label="Timezone Offset (Hours)" min="-12" max="14" />
-                            <div class="fieldDescription">Adjust the logged date (e.g., -8 for PST).</div>
+                            <div class="fieldDescription">Adjust the logged date (e.g., -7 for Pacific Time).</div>
                         </div>
 
                         <h3>Cloudflare Bypass</h3>
@@ -79,7 +85,7 @@
                             <input is="emby-input" type="text" id="useragent" label="Legacy User-Agent" />
                         </div>
 
-                        <div>
+                        <div style="margin-top: 2em;">
                             <button id="save-button" is="emby-button" type="submit" class="raised button-submit block">
                                 <span>${Save}</span>
                             </button>
@@ -91,17 +97,18 @@
             <!-- Media Library Tab -->
             <div id="MediaLibraryTab" class="tabContent hide">
                 <h2 class="sectionTitle"><b>Media Library Management</b></h2>
-                <div class="fieldDescription">Mark movies as watched in Jellyfin without syncing them to Letterboxd.</div>
+                <div class="fieldDescription">Manage local watch status and playlist membership.</div>
 
                 <div class="selectContainer">
                     <label class="inputLabel" for="libraryUserSelect">User</label>
                     <select is="emby-select" id="libraryUserSelect" class="emby-select-withcolor emby-select"></select>
                 </div>
 
-                <div id="movieListContainer" class="paperList" style="margin-top: 2em; max-height: 600px; overflow-y: auto;">
-                    <div class="movieListHeader" style="display: flex; padding: 10px; font-weight: bold; border-bottom: 1px solid #333;">
+                <div id="movieListContainer" class="paperList" style="margin-top: 2em; max-height: 700px; overflow-y: auto;">
+                    <div class="movieListHeader" style="display: flex; padding: 10px; font-weight: bold; border-bottom: 2px solid #555; background: #1a1a1a;">
                         <div style="flex: 2;">Title</div>
                         <div style="flex: 1;">Status</div>
+                        <div style="flex: 1; text-align: center;">Playlist</div>
                         <div style="flex: 1; text-align: right;">Action</div>
                     </div>
                     <div id="movieListBody">
