@@ -169,11 +169,17 @@ public class LetterboxdLogController : ControllerBase
 
         // 1. Update Played Status
         var userData = _userDataManager.GetUserData(user, movie);
+        if (userData == null)
+        {
+            userData = new MediaBrowser.Model.Entities.UserItemData();
+        }
+
         userData.Played = request.Watched;
         if (request.Watched && !userData.LastPlayedDate.HasValue)
         {
             userData.LastPlayedDate = DateTime.UtcNow;
         }
+
         _userDataManager.SaveUserData(user, movie, userData, UserDataSaveReason.TogglePlayed, default);
 
         // 2. Update Tags (.ignore and LetterboxdSkip)
@@ -184,7 +190,7 @@ public class LetterboxdLogController : ControllerBase
             {
                 tags.Add(".ignore");
             }
-            
+
             var todayTag = $"LetterboxdSkip:{DateTime.Today:yyyy-MM-dd}";
             tags.RemoveAll(t => t.StartsWith("LetterboxdSkip:", StringComparison.OrdinalIgnoreCase));
             tags.Add(todayTag);
@@ -200,19 +206,51 @@ public class LetterboxdLogController : ControllerBase
 
         return Ok();
     }
+}
 
-    public class MarkWatchedRequest
-    {
-        public string UserId { get; set; } = string.Empty;
-        public string MovieId { get; set; } = string.Empty;
-        public bool Watched { get; set; }
-    }
+/// <summary>
+/// Model for Mark Watched request.
+/// </summary>
+public class MarkWatchedRequest
+{
+    /// <summary>
+    /// Gets or sets the user identifier.
+    /// </summary>
+    public string UserId { get; set; } = string.Empty;
 
-    public class PlaylistRequest
-    {
-        public string UserId { get; set; } = string.Empty;
-        public string PlaylistId { get; set; } = string.Empty;
-        public string MovieId { get; set; } = string.Empty;
-        public bool InPlaylist { get; set; }
-    }
+    /// <summary>
+    /// Gets or sets the movie identifier.
+    /// </summary>
+    public string MovieId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the movie is watched.
+    /// </summary>
+    public bool Watched { get; set; }
+}
+
+/// <summary>
+/// Model for Playlist request.
+/// </summary>
+public class PlaylistRequest
+{
+    /// <summary>
+    /// Gets or sets the user identifier.
+    /// </summary>
+    public string UserId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the playlist identifier.
+    /// </summary>
+    public string PlaylistId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the movie identifier.
+    /// </summary>
+    public string MovieId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the movie is in the playlist.
+    /// </summary>
+    public bool InPlaylist { get; set; }
 }

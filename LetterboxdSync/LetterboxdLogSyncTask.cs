@@ -306,6 +306,7 @@ public class LetterboxdLogSyncTask : IScheduledTask
                             {
                                 SaveCache();
                             }
+
                             _logger.LogInformation("Film already logged in Letterboxd for this date ({Date}) User: {Username} Movie: {Movie}", viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), user.Username, title);
                         }
                         else
@@ -320,6 +321,7 @@ public class LetterboxdLogSyncTask : IScheduledTask
                             {
                                 SaveCache();
                             }
+
                             _logger.LogInformation("Film logged in Letterboxd User: {Username} Movie: {Movie} Date: {ViewingDate}", user.Username, title, viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
                         }
                     }

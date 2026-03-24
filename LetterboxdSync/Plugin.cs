@@ -32,7 +32,9 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     /// <inheritdoc />
     public override Guid Id => Guid.Parse("99ec381d-a07c-4a0f-b245-ccb37eb14369");
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Gets the thumb image format.
+    /// </summary>
     public string ThumbImageFormat => "image/png";
 
     /// <summary>
@@ -58,7 +60,10 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         };
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Gets the thumb image.
+    /// </summary>
+    /// <returns>The thumb image stream.</returns>
     public Stream GetThumbImage()
     {
         var type = GetType();
