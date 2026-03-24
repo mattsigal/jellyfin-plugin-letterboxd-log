@@ -395,7 +395,7 @@ public class LetterboxdApi : IDisposable
             throw new InvalidOperationException($"Search page resolved to non-film URL: '{filmUrl}'");
         }
 
-        string filmSlug = NormalizeSlug(segments[1]);
+        string filmSlug = segments[1];
 
         using (var filmRequest = new HttpRequestMessage(HttpMethod.Get, $"/film/{filmSlug}/"))
         {

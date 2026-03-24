@@ -224,7 +224,7 @@ public class LetterboxdLogSyncTask : IScheduledTask
                             {
                                 // Still within the skipped timeframe (same day or earlier)
                                 // If .ignore is missing but SkipTag is present, we still respect the SkipTag until a new date appears.
-                                _logger.LogInformation("Skipping Letterboxd sync for {Movie}. Reason: Previously skipped and no new watch detected (Played: {Played} == Skip: {Skip}).", title, viewingDate.Value.Date, skipDate.Date);
+                                _logger.LogDebug("Skipping Letterboxd sync for {Movie}. Reason: Previously skipped and no new watch detected (Played: {Played} == Skip: {Skip}).", title, viewingDate.Value.Date, skipDate.Date);
                                 continue;
                             }
                         }
@@ -295,6 +295,7 @@ public class LetterboxdLogSyncTask : IScheduledTask
 
                 if (filmResult != null)
                 {
+                    _logger.LogDebug("Resolved Letterboxd: {Slug} ({Id}) for {Movie}", filmResult.FilmSlug, filmResult.FilmId, title);
                     try
                     {
                         var dateLastLog = await api.GetDateLastLog(filmResult.FilmSlug).ConfigureAwait(false);
