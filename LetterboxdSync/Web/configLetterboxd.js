@@ -190,15 +190,28 @@ export default function (view, params) {
         });
     }
 
-    // Store loaded movies for client-side filtering
+    // Store loaded movies for client-side filtering and caching
     let _allMovies = [];
     let _currentUserId = '';
     let _currentPlaylistId = '';
+    let _moviesCache = {}; // key: "userId:playlistId"
 
-    function loadMovies(userId, playlistId) {
+    function moviesCacheKey(userId, playlistId) {
+        return userId + ':' + (playlistId || '');
+    }
+
+    function loadMovies(userId, playlistId, forceReload) {
         if (!userId) return;
         _currentUserId = userId;
         _currentPlaylistId = playlistId;
+
+        // Use cache if available and not forced
+        var cKey = moviesCacheKey(userId, playlistId);
+        if (!forceReload && _moviesCache[cKey]) {
+            _allMovies = _moviesCache[cKey];
+            renderMovies();
+            return;
+        }
 
         const body = view.querySelector('#movieListBody');
         body.innerHTML = '<div style="padding: 20px; text-align: center;">Loading movies...</div>';
@@ -211,6 +224,7 @@ export default function (view, params) {
         const url = ApiClient.getUrl('Jellyfin.Plugin.LetterboxdLog/GetMovies', params);
         ApiClient.getJSON(url).then(movies => {
             _allMovies = movies || [];
+            _moviesCache[cKey] = _allMovies;
             view.querySelector('#filterStatus').value = 'all';
             renderMovies();
         });
@@ -290,6 +304,9 @@ export default function (view, params) {
             url: url,
             data: JSON.stringify(data),
             contentType: 'application/json'
+        }).then(() => {
+            // Invalidate cache — playlist membership changed
+            delete _moviesCache[moviesCacheKey(userId, playlistId)];
         }).catch(err => {
             Dashboard.alert('Error updating playlist');
         });
@@ -323,17 +340,20 @@ export default function (view, params) {
             url: url,
             data: JSON.stringify(data),
             contentType: 'application/json'
+        }).then(() => {
+            // Invalidate cache — watched status changed
+            delete _moviesCache[moviesCacheKey(userId, playlistId)];
         }).catch(err => {
             Dashboard.alert('Error updating movie status');
         });
     }
 
     view.querySelector('#selectPlaylist').addEventListener('change', function (e) {
-        loadMovies(view.querySelector('#libraryUserSelect').value, e.target.value);
+        loadMovies(view.querySelector('#libraryUserSelect').value, e.target.value, true);
     });
 
     view.querySelector('#libraryUserSelect').addEventListener('change', function (e) {
-        loadMovies(e.target.value, view.querySelector('#selectPlaylist').value);
+        loadMovies(e.target.value, view.querySelector('#selectPlaylist').value, true);
     });
 
     view.querySelector('#filterStatus').addEventListener('change', function () {
