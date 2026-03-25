@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/mattsigal/jellyfin-plugin-letterboxd-log/main/images/letterboxd-sync.png",
     "versions": [
       {
+        "version": "1.19.0.1",
+        "changelog": "- v1.19.0.1: Retry with exponential backoff on 403/429 responses (4b67061)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.19.0.1/LetterboxdLog-v1.19.0.1.zip",
+        "checksum": "aad5ad0a5cc53832ef037976a321bc0d",
+        "timestamp": "2026-03-25T20:20:27Z"
+      },
+      {
         "version": "1.19.0.0",
         "changelog": "- v1.19.0.0: Real-time sync, rewatch detection, and UI polish (92e951c)",
         "targetAbi": "10.11.0.0",
