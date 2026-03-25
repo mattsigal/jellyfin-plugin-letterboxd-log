@@ -1,23 +1,15 @@
-<div id="LetterboxdLogConfigPage" data-role="page" class="page type-interior pluginConfigurationPage withTabs"
+<div id="LetterboxdLogConfigPage" data-role="page" class="page type-interior pluginConfigurationPage"
     data-controller="__plugin/configLetterboxdjs">
 
-    <div class="fixed-header">
-        <div class="emby-tabs">
-            <div class="emby-tabs-slider">
-                <button is="emby-button" draggable="false" class="emby-tab-button emby-tab-button-active" data-index="0">
-                    <div class="emby-tab-button-content">Settings</div>
-                </button>
-                <button is="emby-button" draggable="false" class="emby-tab-button" data-index="1">
-                    <div class="emby-tab-button-content">Media Library</div>
-                </button>
-            </div>
-        </div>
-    </div>
-
     <div data-role="content">
-        <div class="content-primary" style="padding-top: 2em;">
+        <div class="content-primary">
+            <div id="lbxTabs" style="display: flex; gap: 0; margin-bottom: 1.5em;">
+                <button type="button" class="lbx-tab lbx-tab-active" data-tab="SettingsTab" style="padding: 10px 24px; border: none; cursor: pointer; font-size: 1em; font-weight: 600; background: #00a4dc; color: #fff; border-radius: 4px 0 0 4px;">Settings</button>
+                <button type="button" class="lbx-tab" data-tab="MediaLibraryTab" style="padding: 10px 24px; border: none; cursor: pointer; font-size: 1em; font-weight: 600; background: #333; color: #ccc; border-radius: 0 4px 4px 0;">Media Library</button>
+            </div>
+
             <!-- Settings Tab -->
-            <div id="SettingsTab" class="tabContent">
+            <div id="SettingsTab" class="lbx-tabContent">
                 <form id="LetterboxdLogConfigForm">
                     <div>
                         <h2 class="sectionTitle"><b>Settings</b></h2>
@@ -89,7 +81,7 @@
             </div>
 
             <!-- Media Library Tab -->
-            <div id="MediaLibraryTab" class="tabContent hide">
+            <div id="MediaLibraryTab" class="lbx-tabContent" style="display: none;">
                 <h2 class="sectionTitle"><b>Media Library Management</b></h2>
                 <div class="fieldDescription">Manage local watch status and playlist membership.</div>
 
@@ -118,4 +110,4 @@
             </div>
         </div>
     </div>
-</div>
+</div>

@@ -1,24 +1,10 @@
 export const pluginId = '99ec381d-a07c-4a0f-b245-ccb37eb14369';
-// Version: 1.17.1.7
 
 export default function (view, params) {
 
-    // Fix tab colors and spacing
+    // Inject styles
     const style = document.createElement('style');
     style.textContent = `
-        #LetterboxdLogConfigPage {
-            padding-top: 65px !important;
-        }
-        .fixed-header {
-            top: 65px !important;
-        }
-        .emby-tab-button-active {
-            background: #00a4dc !important;
-            color: white !important;
-        }
-        .tabContent {
-            margin-top: 1.5em;
-        }
         .movieListHeader {
             background: #252525 !important;
             border-bottom: 2px solid #555 !important;
@@ -34,9 +20,37 @@ export default function (view, params) {
         .paperList {
             background: #111;
         }
+        .lbx-tab:hover {
+            opacity: 0.85;
+        }
     `;
     view.appendChild(style);
 
+    // Tab Logic — our own simple tabs, no Jellyfin framework dependency
+    view.querySelectorAll('.lbx-tab').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const targetId = this.getAttribute('data-tab');
+
+            view.querySelectorAll('.lbx-tab').forEach(b => {
+                b.style.background = '#333';
+                b.style.color = '#ccc';
+            });
+            this.style.background = '#00a4dc';
+            this.style.color = '#fff';
+
+            view.querySelectorAll('.lbx-tabContent').forEach(c => {
+                c.style.display = 'none';
+            });
+            const target = view.querySelector('#' + targetId);
+            if (target) target.style.display = 'block';
+
+            if (targetId === 'MediaLibraryTab') {
+                loadMovies(view.querySelector('#libraryUserSelect').value, view.querySelector('#selectPlaylist').value);
+            }
+        });
+    });
+
+    // Page init — loads users, playlists, and config
     function initPage() {
         const selectUsers = view.querySelector('#usersJellyfin');
         const libraryUserSelect = view.querySelector('#libraryUserSelect');
@@ -59,7 +73,6 @@ export default function (view, params) {
                     if (p.Name.toLowerCase().includes('hux list')) huxIndex = index;
                     playlistSelect.appendChild(opt);
                 });
-                // Default to Hux List if found, otherwise first one
                 playlistSelect.selectedIndex = (huxIndex !== -1) ? huxIndex : 0;
             } else {
                 const opt = document.createElement('option');
@@ -67,7 +80,6 @@ export default function (view, params) {
                 playlistSelect.appendChild(opt);
             }
 
-            // Trigger load after playlists are ready
             if (libraryUserSelect.value) {
                 loadMovies(libraryUserSelect.value, playlistSelect.value);
             }
@@ -91,51 +103,15 @@ export default function (view, params) {
                     }
                 }
                 loadAccountConfig(selectUsers.value);
-                // loadMovies will be triggered by playlistSelect loading completion
             }).catch(() => {
                 loadAccountConfig(selectUsers.value);
             });
         });
     }
 
-    let initialized = false;
-    function initOnce() {
-        if (initialized) return;
-        initialized = true;
-        initPage();
-    }
-
-    view.addEventListener('viewshow', function () {
-        initialized = false;
-        initPage();
-    });
-
-    // Deferred init for first load — viewshow may have already fired before controller attached
-    setTimeout(initOnce, 0);
-
-    // Tab Logic
-    const tabButtons = view.querySelectorAll('.emby-tab-button');
-    const tabContents = view.querySelectorAll('.tabContent');
-
-    tabButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const index = parseInt(this.getAttribute('data-index'));
-            tabButtons.forEach(b => b.classList.remove('emby-tab-button-active'));
-            this.classList.add('emby-tab-button-active');
-
-            tabContents.forEach((content, i) => {
-                if (i === index) {
-                    content.classList.remove('hide');
-                } else {
-                    content.classList.add('hide');
-                }
-            });
-
-            if (index === 1) {
-                loadMovies(view.querySelector('#libraryUserSelect').value, view.querySelector('#selectPlaylist').value);
-            }
-        });
-    });
+    view.addEventListener('viewshow', initPage);
+    // Also run immediately — controller may load after viewshow has already fired
+    initPage();
 
     function loadAccountConfig(userSelectedId) {
         ApiClient.getPluginConfiguration(pluginId).then(config => {
@@ -166,7 +142,7 @@ export default function (view, params) {
 
     function loadMovies(userId, playlistId) {
         if (!userId) return;
-        
+
         const body = view.querySelector('#movieListBody');
         body.innerHTML = '<div style="padding: 20px; text-align: center;">Loading movies...</div>';
 
@@ -187,38 +163,38 @@ export default function (view, params) {
                 const row = document.createElement('div');
                 row.className = 'movieRow';
                 row.style = 'display: flex; padding: 10px; align-items: center; border-bottom: 1px solid #333; min-height: 50px;';
-                
+
                 const status = movie.IsPlayed ? (movie.HasIgnore ? '<span style="color: orange;">Watched (No Sync)</span>' : '<span style="color: #6fb03e;">Watched (Synced)</span>') : '<span style="color: #aaa;">Unwatched</span>';
                 const actionLabel = movie.IsPlayed && movie.HasIgnore ? 'Reset Status' : 'Mark Watched (No Sync)';
                 const actionClass = movie.IsPlayed && movie.HasIgnore ? 'button-flat' : 'button-accent';
                 const playlistChecked = movie.IsInPlaylist ? 'checked' : '';
 
-                    row.innerHTML = `
-                        <div style="flex: 2;">
-                            <div style="font-weight: 500;">${movie.Name}</div>
-                            <div style="font-size: 0.85em; color: #888;">${movie.Year || ''}</div>
-                        </div>
-                        <div style="flex: 1;" class="statusText">${status}</div>
-                        <div style="flex: 1; text-align: center;">
-                            <input type="checkbox" class="chkPlaylist" data-id="${movie.Id}" ${playlistChecked} />
-                        </div>
-                        <div style="flex: 1; text-align: right;">
-                            <button is="emby-button" class="raised ${actionClass} btnMark" style="margin: 0;" data-id="${movie.Id}" data-watched="${!(movie.IsPlayed && movie.HasIgnore)}">
-                                <span>${actionLabel}</span>
-                            </button>
-                        </div>
-                    `;
-                    body.appendChild(row);
+                row.innerHTML = `
+                    <div style="flex: 2;">
+                        <div style="font-weight: 500;">${movie.Name}</div>
+                        <div style="font-size: 0.85em; color: #888;">${movie.Year || ''}</div>
+                    </div>
+                    <div style="flex: 1;" class="statusText">${status}</div>
+                    <div style="flex: 1; text-align: center;">
+                        <input type="checkbox" class="chkPlaylist" data-id="${movie.Id}" ${playlistChecked} />
+                    </div>
+                    <div style="flex: 1; text-align: right;">
+                        <button is="emby-button" class="raised ${actionClass} btnMark" style="margin: 0;" data-id="${movie.Id}" data-watched="${!(movie.IsPlayed && movie.HasIgnore)}">
+                            <span>${actionLabel}</span>
+                        </button>
+                    </div>
+                `;
+                body.appendChild(row);
             });
 
             body.querySelectorAll('.btnMark').forEach(btn => {
-                btn.addEventListener('click', function() {
+                btn.addEventListener('click', function () {
                     markWatched(this, userId, playlistId, this.getAttribute('data-id'), this.getAttribute('data-watched') === 'true');
                 });
             });
 
             body.querySelectorAll('.chkPlaylist').forEach(chk => {
-                chk.addEventListener('change', function() {
+                chk.addEventListener('change', function () {
                     togglePlaylist(userId, playlistId, this.getAttribute('data-id'), this.checked);
                 });
             });
@@ -240,19 +216,14 @@ export default function (view, params) {
     }
 
     function markWatched(btn, userId, playlistId, movieId, watched) {
-        console.log('MarkWatched triggered:', { movieId, watched });
         const url = ApiClient.getUrl('Jellyfin.Plugin.LetterboxdLog/MarkWatchedLocally');
         const data = { UserId: userId, MovieId: movieId, Watched: watched };
 
-        // Optimistic UI Update
         const row = btn.closest('.movieRow');
-        if (!row) {
-            console.error('Could not find movieRow for button', btn);
-            return;
-        }
+        if (!row) return;
         const statusText = row.querySelector('.statusText');
         const btnText = btn.querySelector('span');
-        
+
         if (watched) {
             statusText.innerHTML = '<span style="color: orange;">Watched (No Sync)</span>';
             btnText.textContent = 'Reset Status';
@@ -274,15 +245,14 @@ export default function (view, params) {
             contentType: 'application/json'
         }).catch(err => {
             Dashboard.alert('Error updating movie status');
-            // Revert on error? Or just leave it for user to refresh.
         });
     }
 
-    view.querySelector('#selectPlaylist').addEventListener('change', function(e) {
+    view.querySelector('#selectPlaylist').addEventListener('change', function (e) {
         loadMovies(view.querySelector('#libraryUserSelect').value, e.target.value);
     });
 
-    view.querySelector('#libraryUserSelect').addEventListener('change', function(e) {
+    view.querySelector('#libraryUserSelect').addEventListener('change', function (e) {
         loadMovies(e.target.value, view.querySelector('#selectPlaylist').value);
     });
 
