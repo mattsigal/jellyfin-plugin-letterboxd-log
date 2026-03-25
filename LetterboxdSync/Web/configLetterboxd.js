@@ -3,8 +3,36 @@ export const pluginId = '99ec381d-a07c-4a0f-b245-ccb37eb14369';
 export default function (view, params) {
 
     // Inject styles
+    const accentColor = '#aa5cc3';
+    const accentHover = '#9147b0';
     const style = document.createElement('style');
     style.textContent = `
+        .lbx-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 1.5em;
+            border-bottom: 2px solid ${accentColor};
+        }
+        .lbx-tab {
+            padding: 10px 28px;
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            background: transparent;
+            color: #999;
+            position: relative;
+            transition: color 0.2s, background 0.2s;
+            border-radius: 6px 6px 0 0;
+        }
+        .lbx-tab:hover {
+            color: #ddd;
+            background: rgba(170, 92, 195, 0.1);
+        }
+        .lbx-tab-active {
+            color: #fff !important;
+            background: ${accentColor} !important;
+        }
         .movieListHeader {
             background: #252525 !important;
             border-bottom: 2px solid #555 !important;
@@ -20,11 +48,24 @@ export default function (view, params) {
         .paperList {
             background: #111;
         }
-        .lbx-tab:hover {
-            opacity: 0.85;
-        }
     `;
     view.appendChild(style);
+
+    // Build tab buttons dynamically
+    const tabDefs = [
+        { id: 'SettingsTab', label: 'Settings' },
+        { id: 'MediaLibraryTab', label: 'Media Library' },
+        { id: 'HistoryTab', label: 'Letterboxd History' }
+    ];
+    const tabBar = view.querySelector('.lbx-tabs');
+    tabDefs.forEach((def, i) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'lbx-tab' + (i === 0 ? ' lbx-tab-active' : '');
+        btn.setAttribute('data-tab', def.id);
+        btn.textContent = def.label;
+        tabBar.appendChild(btn);
+    });
 
     // Tab Logic — our own simple tabs, no Jellyfin framework dependency
     view.querySelectorAll('.lbx-tab').forEach(btn => {
@@ -32,11 +73,9 @@ export default function (view, params) {
             const targetId = this.getAttribute('data-tab');
 
             view.querySelectorAll('.lbx-tab').forEach(b => {
-                b.style.background = '#333';
-                b.style.color = '#ccc';
+                b.classList.remove('lbx-tab-active');
             });
-            this.style.background = '#00a4dc';
-            this.style.color = '#fff';
+            this.classList.add('lbx-tab-active');
 
             view.querySelectorAll('.lbx-tabContent').forEach(c => {
                 c.style.display = 'none';
@@ -212,7 +251,7 @@ export default function (view, params) {
 
             row.innerHTML = `
                 <div style="flex: 2;">
-                    <div style="font-weight: 500;"><a href="${jellyfinUrl}" target="_blank" style="color: #00a4dc; text-decoration: none;">${movie.Name}</a></div>
+                    <div style="font-weight: 500;"><a href="${jellyfinUrl}" target="_blank" style="color: #aa5cc3; text-decoration: none;">${movie.Name}</a></div>
                     <div style="font-size: 0.85em; color: #888;">${movie.Year || ''}</div>
                 </div>
                 <div style="flex: 1;" class="statusText">${status}</div>
@@ -369,7 +408,7 @@ export default function (view, params) {
 
             row.innerHTML = `
                 <div style="flex: 2;">
-                    <div style="font-weight: 500;"><a href="${jellyfinUrl}" target="_blank" style="color: #00a4dc; text-decoration: none;">${entry.Name}</a></div>
+                    <div style="font-weight: 500;"><a href="${jellyfinUrl}" target="_blank" style="color: #aa5cc3; text-decoration: none;">${entry.Name}</a></div>
                     <div style="font-size: 0.85em; color: #888;">${entry.Year || ''}</div>
                 </div>
                 <div style="flex: 1;">${formatDateLogged(entry.DateLogged)}</div>

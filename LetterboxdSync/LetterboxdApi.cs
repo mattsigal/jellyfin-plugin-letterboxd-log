@@ -498,7 +498,7 @@ public class LetterboxdApi : IDisposable
         }
     }
 
-    public async Task MarkAsWatched(string filmSlug, string productionId, DateTime? date, string[] tags, bool liked = false, int? rating = null, Action<string>? log = null)
+    public async Task MarkAsWatched(string filmSlug, string productionId, DateTime? date, string[] tags, bool liked = false, int? rating = null, bool rewatch = false, Action<string>? log = null)
     {
         string url = "/api/v0/production-log-entries";
         DateTime viewingDate = date ?? DateTime.Now;
@@ -532,7 +532,7 @@ public class LetterboxdApi : IDisposable
                 var diaryDetails = new Dictionary<string, object>
                 {
                     ["diaryDate"] = viewingDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                    ["rewatch"] = false
+                    ["rewatch"] = rewatch
                 };
 
                 var payload = new Dictionary<string, object>

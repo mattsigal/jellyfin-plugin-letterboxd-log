@@ -365,10 +365,13 @@ public class LetterboxdLogSyncTask : IScheduledTask
                         }
                         else
                         {
+                            // Rewatch detection: if there's any prior diary entry, this is a rewatch
+                            bool isRewatch = dateLastLog.HasValue;
+
                             // human-like delay between films
                             await Task.Delay(1000 + Random.Shared.Next(2000), cancellationToken).ConfigureAwait(false);
 
-                            await api.MarkAsWatched(filmResult.FilmSlug, filmResult.ProductionId, adjustedViewingDate, tags, favorite, rating: null, log: msg => _logger.LogInformation("[MarkAsWatched] {Message}", msg)).ConfigureAwait(false);
+                            await api.MarkAsWatched(filmResult.FilmSlug, filmResult.ProductionId, adjustedViewingDate, tags, favorite, rating: null, rewatch: isRewatch, log: msg => _logger.LogInformation("[MarkAsWatched] {Message}", msg)).ConfigureAwait(false);
 
                             // Successfully pushed — cache it
                             if (_syncCache.TryAdd(cacheKey, DateTime.UtcNow))
@@ -376,7 +379,8 @@ public class LetterboxdLogSyncTask : IScheduledTask
                                 SaveCache();
                             }
 
-                            _logger.LogInformation("Film logged in Letterboxd User: {Username} Movie: {Movie} Date: {ViewingDate}", user.Username, title, viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+                            string rewatchLabel = isRewatch ? " (rewatch)" : string.Empty;
+                            _logger.LogInformation("Film logged{Rewatch} in Letterboxd User: {Username} Movie: {Movie} Date: {ViewingDate}", rewatchLabel, user.Username, title, viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
 
                             AppendHistory(
                                 user.Id.ToString("N"),
