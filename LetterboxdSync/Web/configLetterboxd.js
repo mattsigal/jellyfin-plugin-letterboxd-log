@@ -98,10 +98,20 @@ export default function (view, params) {
         });
     }
 
-    view.addEventListener('viewshow', initPage);
+    let initialized = false;
+    function initOnce() {
+        if (initialized) return;
+        initialized = true;
+        initPage();
+    }
 
-    // Run immediately for first load (viewshow may have already fired before controller attached)
-    initPage();
+    view.addEventListener('viewshow', function () {
+        initialized = false;
+        initPage();
+    });
+
+    // Deferred init for first load — viewshow may have already fired before controller attached
+    setTimeout(initOnce, 0);
 
     // Tab Logic
     const tabButtons = view.querySelectorAll('.emby-tab-button');

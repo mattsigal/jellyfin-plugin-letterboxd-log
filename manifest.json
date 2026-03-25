@@ -6,6 +6,7 @@
     "overview": "Syncs your Jellyfin watch history to Letterboxd, supporting anti-bot measures and raw cookies.",
     "owner": "mattsigal",
     "category": "Metadata",
+    "imageUrl": "https://raw.githubusercontent.com/mattsigal/jellyfin-plugin-letterboxd-log/main/images/letterboxd-sync.png",
     "versions": [
       {
         "version": "1.18.1.0",
