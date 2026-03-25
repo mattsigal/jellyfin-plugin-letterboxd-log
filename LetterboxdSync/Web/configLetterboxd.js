@@ -205,17 +205,30 @@ export default function (view, params) {
         _currentUserId = userId;
         _currentPlaylistId = playlistId;
 
-        // Use cache if available and not forced
         var cKey = moviesCacheKey(userId, playlistId);
-        if (!forceReload && _moviesCache[cKey]) {
+        var hasCached = !!_moviesCache[cKey];
+
+        // Show cached data immediately if available
+        if (hasCached) {
             _allMovies = _moviesCache[cKey];
             renderMovies();
-            return;
+            if (!forceReload) {
+                // Silently revalidate in the background
+                fetchMovies(userId, playlistId, cKey, true);
+                return;
+            }
         }
 
-        const body = view.querySelector('#movieListBody');
-        body.innerHTML = '<div style="padding: 20px; text-align: center;">Loading movies...</div>';
+        // No cache — show loading indicator
+        if (!hasCached) {
+            var body = view.querySelector('#movieListBody');
+            body.innerHTML = '<div style="padding: 20px; text-align: center;">Loading movies...</div>';
+        }
 
+        fetchMovies(userId, playlistId, cKey, false);
+    }
+
+    function fetchMovies(userId, playlistId, cKey, silent) {
         const params = { userId: userId };
         if (playlistId && playlistId.length > 5) {
             params.playlistId = playlistId;
@@ -223,10 +236,16 @@ export default function (view, params) {
 
         const url = ApiClient.getUrl('Jellyfin.Plugin.LetterboxdLog/GetMovies', params);
         ApiClient.getJSON(url).then(movies => {
-            _allMovies = movies || [];
-            _moviesCache[cKey] = _allMovies;
-            view.querySelector('#filterStatus').value = 'all';
-            renderMovies();
+            var fresh = movies || [];
+            _moviesCache[cKey] = fresh;
+            // Only re-render if still viewing this user+playlist
+            if (_currentUserId === userId && _currentPlaylistId === playlistId) {
+                _allMovies = fresh;
+                if (!silent) {
+                    view.querySelector('#filterStatus').value = 'all';
+                }
+                renderMovies();
+            }
         });
     }
 
@@ -389,21 +408,34 @@ export default function (view, params) {
         if (!userId) return;
 
         const body = view.querySelector('#historyListBody');
+        var hasCached = !!_historyCache[userId];
 
-        // Use cache if available
-        if (_historyCache[userId]) {
+        // Show cached data immediately if available
+        if (hasCached) {
             renderHistory(_historyCache[userId]);
+            // Silently revalidate in the background
+            fetchHistory(userId, true);
             return;
         }
 
         body.innerHTML = '<div style="padding: 20px; text-align: center;">Loading history...</div>';
+        fetchHistory(userId, false);
+    }
 
+    function fetchHistory(userId, silent) {
         const url = ApiClient.getUrl('Jellyfin.Plugin.LetterboxdLog/GetHistory', { userId: userId });
         ApiClient.getJSON(url).then(entries => {
             _historyCache[userId] = entries || [];
-            renderHistory(_historyCache[userId]);
+            // Only re-render if still viewing this user's history
+            var currentHistoryUser = view.querySelector('#historyUserSelect').value;
+            if (currentHistoryUser === userId) {
+                renderHistory(_historyCache[userId]);
+            }
         }).catch(() => {
-            body.innerHTML = '<div style="padding: 20px; text-align: center;">Error loading history.</div>';
+            if (!silent) {
+                var body = view.querySelector('#historyListBody');
+                body.innerHTML = '<div style="padding: 20px; text-align: center;">Error loading history.</div>';
+            }
         });
     }
 
