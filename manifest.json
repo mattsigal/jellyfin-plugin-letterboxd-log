@@ -13,8 +13,8 @@
         "changelog": "- v1.19.0.2: Cache Media Library tab to avoid re-fetching on tab switch (ae9d3d8)",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.19.0.2/LetterboxdLog-v1.19.0.2.zip",
-        "checksum": "42a2a2cf9a7a42c8d586ea57e0dd00e6",
-        "timestamp": "2026-03-25T20:23:40Z"
+        "checksum": "670796d062ea6333ccf4bc904297b99a",
+        "timestamp": "2026-03-25T20:24:08Z"
       },
       {
         "version": "1.19.0.1",
