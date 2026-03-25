@@ -295,13 +295,24 @@ public class LetterboxdLogController : ControllerBase
             return BadRequest("User not found");
         }
 
+        var configDir = System.IO.Path.GetDirectoryName(Plugin.Instance!.ConfigurationFilePath) ?? string.Empty;
+        var userIdStr = userGuid.ToString("N");
+
+        // Dedup key: movieId+date
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var result = new List<HistoryResult>();
 
-        // Source 1: Persistent history log (written by sync task)
-        var historyPath = System.IO.Path.Combine(
-            System.IO.Path.GetDirectoryName(Plugin.Instance!.ConfigurationFilePath) ?? string.Empty,
-            "LetterboxdLog_History.json");
+        void AddResult(HistoryResult r)
+        {
+            var key = $"{r.Id}:{r.DateLogged}";
+            if (seen.Add(key))
+            {
+                result.Add(r);
+            }
+        }
 
+        // Source 1: Persistent history log (written by sync task on new syncs)
+        var historyPath = System.IO.Path.Combine(configDir, "LetterboxdLog_History.json");
         if (System.IO.File.Exists(historyPath))
         {
             try
@@ -310,7 +321,7 @@ public class LetterboxdLogController : ControllerBase
                 var entries = JsonSerializer.Deserialize<List<HistoryEntry>>(json);
                 if (entries != null)
                 {
-                    foreach (var entry in entries.Where(e => string.Equals(e.UserId, userGuid.ToString("N"), StringComparison.OrdinalIgnoreCase)))
+                    foreach (var entry in entries.Where(e => string.Equals(e.UserId, userIdStr, StringComparison.OrdinalIgnoreCase)))
                     {
                         BaseItem? movie = null;
                         if (!string.IsNullOrEmpty(entry.MovieId) && Guid.TryParse(entry.MovieId, out var movieGuid))
@@ -318,7 +329,7 @@ public class LetterboxdLogController : ControllerBase
                             movie = _libraryManager.GetItemById(movieGuid);
                         }
 
-                        result.Add(new HistoryResult
+                        AddResult(new HistoryResult
                         {
                             Id = entry.MovieId ?? string.Empty,
                             Name = movie?.Name ?? entry.Name ?? "Unknown",
@@ -337,9 +348,60 @@ public class LetterboxdLogController : ControllerBase
             }
         }
 
-        // Source 2: Fall back to tag-based detection for movies not in the history log
-        var historyMovieIds = new HashSet<string>(result.Select(r => r.Id));
+        // Source 2: Sync cache — keys are "userId:movieId:dateString"
+        var cachePath = System.IO.Path.Combine(configDir, "LetterboxdLog_SyncCache.json");
+        if (System.IO.File.Exists(cachePath))
+        {
+            try
+            {
+                var json = System.IO.File.ReadAllText(cachePath);
+                var cache = JsonSerializer.Deserialize<Dictionary<string, DateTime>>(json);
+                if (cache != null)
+                {
+                    foreach (var kvp in cache)
+                    {
+                        var parts = kvp.Key.Split(':');
+                        if (parts.Length < 3)
+                        {
+                            continue;
+                        }
 
+                        if (!string.Equals(parts[0], userIdStr, StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        var movieId = parts[1];
+                        var dateLogged = parts[2];
+
+                        if (Guid.TryParse(movieId, out var movieGuid))
+                        {
+                            var movie = _libraryManager.GetItemById(movieGuid);
+                            if (movie != null)
+                            {
+                                var tmdbId = movie.GetProviderId(MediaBrowser.Model.Entities.MetadataProvider.Tmdb);
+                                AddResult(new HistoryResult
+                                {
+                                    Id = movieId,
+                                    Name = movie.Name,
+                                    Year = movie.ProductionYear,
+                                    DateLogged = dateLogged,
+                                    LetterboxdUrl = !string.IsNullOrEmpty(tmdbId)
+                                        ? $"https://letterboxd.com/tmdb/{tmdbId}/"
+                                        : null
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error reading sync cache for history");
+            }
+        }
+
+        // Source 3: Tag-based detection — movies with LetterboxdSkip tag but no .ignore
         var movies = _libraryManager.GetItemList(new InternalItemsQuery(user)
         {
             IncludeItemTypes = new[] { BaseItemKind.Movie },
@@ -351,22 +413,16 @@ public class LetterboxdLogController : ControllerBase
         foreach (var m in movies)
         {
             var movieIdStr = m.Id.ToString("N");
-            if (historyMovieIds.Contains(movieIdStr))
-            {
-                continue;
-            }
-
             var tags = m.Tags.ToList();
             bool hasIgnore = tags.Contains(".ignore", StringComparer.OrdinalIgnoreCase);
             var skipTag = tags.FirstOrDefault(t => t.StartsWith("LetterboxdSkip:", StringComparison.OrdinalIgnoreCase));
 
-            // Only include movies that were synced (have skip tag but no .ignore)
             if (skipTag != null && !hasIgnore)
             {
                 var datePart = skipTag.Split(':').Length > 1 ? skipTag.Split(':')[1] : null;
                 var tmdbId = m.GetProviderId(MediaBrowser.Model.Entities.MetadataProvider.Tmdb);
 
-                result.Add(new HistoryResult
+                AddResult(new HistoryResult
                 {
                     Id = movieIdStr,
                     Name = m.Name,

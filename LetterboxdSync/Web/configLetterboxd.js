@@ -54,7 +54,11 @@ export default function (view, params) {
     });
 
     // Page init — loads users, playlists, and config
+    let _initRunning = false;
     function initPage() {
+        if (_initRunning) return;
+        _initRunning = true;
+
         const selectUsers = view.querySelector('#usersJellyfin');
         const libraryUserSelect = view.querySelector('#libraryUserSelect');
         const playlistSelect = view.querySelector('#selectPlaylist');
