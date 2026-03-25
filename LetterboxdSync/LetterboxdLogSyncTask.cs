@@ -53,6 +53,8 @@ public class LetterboxdLogSyncTask : IScheduledTask
 
     private string CachePath => Path.Combine(Path.GetDirectoryName(Plugin.Instance!.ConfigurationFilePath) ?? string.Empty, "LetterboxdLog_SyncCache.json");
 
+    private static readonly JsonSerializerOptions HistorySerializerOptions = new() { WriteIndented = true };
+
     private string HistoryPath => Path.Combine(Path.GetDirectoryName(Plugin.Instance!.ConfigurationFilePath) ?? string.Empty, "LetterboxdLog_History.json");
 
     private static PluginConfiguration Configuration =>
@@ -135,7 +137,7 @@ public class LetterboxdLogSyncTask : IScheduledTask
                     ["TmdbId"] = tmdbId
                 });
 
-                File.WriteAllText(HistoryPath, JsonSerializer.Serialize(history, new JsonSerializerOptions { WriteIndented = true }));
+                File.WriteAllText(HistoryPath, JsonSerializer.Serialize(history, HistorySerializerOptions));
             }
         }
         catch (Exception ex)

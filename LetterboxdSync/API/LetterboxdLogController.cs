@@ -138,12 +138,13 @@ public class LetterboxdLogController : ControllerBase
             });
             foreach (var child in children)
             {
-                if (!moviePlaylistMap.ContainsKey(child.Id))
+                if (!moviePlaylistMap.TryGetValue(child.Id, out var names))
                 {
-                    moviePlaylistMap[child.Id] = new List<string>();
+                    names = new List<string>();
+                    moviePlaylistMap[child.Id] = names;
                 }
 
-                moviePlaylistMap[child.Id].Add(pl.Name);
+                names.Add(pl.Name);
             }
         }
 
@@ -294,35 +295,38 @@ public class LetterboxdLogController : ControllerBase
             return BadRequest("User not found");
         }
 
-        var result = new List<object>();
+        var result = new List<HistoryResult>();
 
         // Source 1: Persistent history log (written by sync task)
-        var historyPath = Path.Combine(
-            Path.GetDirectoryName(Plugin.Instance!.ConfigurationFilePath) ?? string.Empty,
+        var historyPath = System.IO.Path.Combine(
+            System.IO.Path.GetDirectoryName(Plugin.Instance!.ConfigurationFilePath) ?? string.Empty,
             "LetterboxdLog_History.json");
 
-        if (File.Exists(historyPath))
+        if (System.IO.File.Exists(historyPath))
         {
             try
             {
-                var json = File.ReadAllText(historyPath);
+                var json = System.IO.File.ReadAllText(historyPath);
                 var entries = JsonSerializer.Deserialize<List<HistoryEntry>>(json);
                 if (entries != null)
                 {
                     foreach (var entry in entries.Where(e => string.Equals(e.UserId, userGuid.ToString("N"), StringComparison.OrdinalIgnoreCase)))
                     {
-                        var movie = _libraryManager.GetItemById(Guid.Parse(entry.MovieId));
-                        var letterboxdUrl = !string.IsNullOrEmpty(entry.TmdbId)
-                            ? $"https://letterboxd.com/tmdb/{entry.TmdbId}/"
-                            : null;
-
-                        result.Add(new
+                        BaseItem? movie = null;
+                        if (!string.IsNullOrEmpty(entry.MovieId) && Guid.TryParse(entry.MovieId, out var movieGuid))
                         {
-                            Id = entry.MovieId,
+                            movie = _libraryManager.GetItemById(movieGuid);
+                        }
+
+                        result.Add(new HistoryResult
+                        {
+                            Id = entry.MovieId ?? string.Empty,
                             Name = movie?.Name ?? entry.Name ?? "Unknown",
                             Year = movie?.ProductionYear ?? entry.Year,
                             DateLogged = entry.DateLogged,
-                            LetterboxdUrl = letterboxdUrl
+                            LetterboxdUrl = !string.IsNullOrEmpty(entry.TmdbId)
+                                ? $"https://letterboxd.com/tmdb/{entry.TmdbId}/"
+                                : null
                         });
                     }
                 }
@@ -334,7 +338,7 @@ public class LetterboxdLogController : ControllerBase
         }
 
         // Source 2: Fall back to tag-based detection for movies not in the history log
-        var historyMovieIds = new HashSet<string>(result.Select(r => ((dynamic)r).Id?.ToString() ?? string.Empty));
+        var historyMovieIds = new HashSet<string>(result.Select(r => r.Id));
 
         var movies = _libraryManager.GetItemList(new InternalItemsQuery(user)
         {
@@ -361,30 +365,29 @@ public class LetterboxdLogController : ControllerBase
             {
                 var datePart = skipTag.Split(':').Length > 1 ? skipTag.Split(':')[1] : null;
                 var tmdbId = m.GetProviderId(MetadataProvider.Tmdb);
-                var letterboxdUrl = !string.IsNullOrEmpty(tmdbId)
-                    ? $"https://letterboxd.com/tmdb/{tmdbId}/"
-                    : null;
 
-                result.Add(new
+                result.Add(new HistoryResult
                 {
                     Id = movieIdStr,
                     Name = m.Name,
                     Year = m.ProductionYear,
                     DateLogged = datePart,
-                    LetterboxdUrl = letterboxdUrl
+                    LetterboxdUrl = !string.IsNullOrEmpty(tmdbId)
+                        ? $"https://letterboxd.com/tmdb/{tmdbId}/"
+                        : null
                 });
             }
         }
 
         // Sort by date descending (most recent first)
         var sorted = result
-            .OrderByDescending(r => ((dynamic)r).DateLogged ?? string.Empty)
+            .OrderByDescending(r => r.DateLogged ?? string.Empty)
             .ToList();
 
         return Ok(sorted);
     }
 
-    private class HistoryEntry
+    private sealed class HistoryEntry
     {
         public string? UserId { get; set; }
 
@@ -397,5 +400,18 @@ public class LetterboxdLogController : ControllerBase
         public string? DateLogged { get; set; }
 
         public string? TmdbId { get; set; }
+    }
+
+    private sealed class HistoryResult
+    {
+        public string Id { get; set; } = string.Empty;
+
+        public string? Name { get; set; }
+
+        public int? Year { get; set; }
+
+        public string? DateLogged { get; set; }
+
+        public string? LetterboxdUrl { get; set; }
     }
 }
