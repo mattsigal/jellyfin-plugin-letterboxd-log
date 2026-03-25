@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/mattsigal/jellyfin-plugin-letterboxd-log/main/images/letterboxd-sync.png",
     "versions": [
       {
+        "version": "1.18.3.0",
+        "changelog": "- v1.18.3.0: Replace Jellyfin tab framework with standalone tabs (be5cda9)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.18.3.0/LetterboxdLog-v1.18.3.0.zip",
+        "checksum": "a410ba825ffe8691db57dbde99c99e11",
+        "timestamp": "2026-03-25T00:41:40Z"
+      },
+      {
         "version": "1.18.2.0",
         "changelog": "- v1.18.2.0: Fix plugin thumbnail and improve settings page init (65b8698)",
         "targetAbi": "10.11.0.0",
