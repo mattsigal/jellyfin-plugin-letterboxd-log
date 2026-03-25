@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/mattsigal/jellyfin-plugin-letterboxd-log/main/images/letterboxd-sync.png",
     "versions": [
       {
+        "version": "1.18.5.3",
+        "changelog": "- v1.18.5.3: Optimize history loading and add timestamps to future logs (109c20a)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.18.5.3/LetterboxdLog-v1.18.5.3.zip",
+        "checksum": "9d6e92091d04737a2cc4601372c93272",
+        "timestamp": "2026-03-25T19:36:27Z"
+      },
+      {
         "version": "1.18.5.2",
         "changelog": "- v1.18.5.2: Fix duplicate users in dropdowns and populate history from sync cache (b848ebd)",
         "targetAbi": "10.11.0.0",
