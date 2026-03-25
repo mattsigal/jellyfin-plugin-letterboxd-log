@@ -103,7 +103,7 @@ public class LetterboxdLogSyncTask : IScheduledTask
         }
     }
 
-    private void AppendHistory(string userId, string movieId, string name, int? year, string dateLogged, string? tmdbId)
+    private void AppendHistory(string userId, string movieId, string name, int? year, string dateLogged, string? tmdbId, bool rewatch = false)
     {
         try
         {
@@ -133,7 +133,8 @@ public class LetterboxdLogSyncTask : IScheduledTask
                     ["Name"] = name,
                     ["Year"] = year,
                     ["DateLogged"] = dateLogged,
-                    ["TmdbId"] = tmdbId
+                    ["TmdbId"] = tmdbId,
+                    ["Rewatch"] = rewatch
                 });
 
                 File.WriteAllText(HistoryPath, JsonSerializer.Serialize(history, HistorySerializerOptions));
@@ -388,7 +389,8 @@ public class LetterboxdLogSyncTask : IScheduledTask
                                 title,
                                 movie.ProductionYear,
                                 DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture),
-                                movie.GetProviderId(MetadataProvider.Tmdb));
+                                movie.GetProviderId(MetadataProvider.Tmdb),
+                                isRewatch);
                         }
                     }
                     catch (Exception ex)

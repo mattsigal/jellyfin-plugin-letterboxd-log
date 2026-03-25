@@ -327,7 +327,7 @@ public class LetterboxdLogController : ControllerBase
             }
         }
 
-        HistoryResult? MovieToResult(string movieId, string? dateLogged, string? fallbackName, int? fallbackYear, string? fallbackTmdbId)
+        HistoryResult? MovieToResult(string movieId, string? dateLogged, string? fallbackName, int? fallbackYear, string? fallbackTmdbId, bool rewatch = false)
         {
             movieMap.TryGetValue(movieId, out var movie);
             var tmdbId = movie?.GetProviderId(MediaBrowser.Model.Entities.MetadataProvider.Tmdb) ?? fallbackTmdbId;
@@ -337,6 +337,7 @@ public class LetterboxdLogController : ControllerBase
                 Name = movie?.Name ?? fallbackName ?? "Unknown",
                 Year = movie?.ProductionYear ?? fallbackYear,
                 DateLogged = dateLogged,
+                Rewatch = rewatch,
                 LetterboxdUrl = !string.IsNullOrEmpty(tmdbId)
                     ? $"https://letterboxd.com/tmdb/{tmdbId}/"
                     : null
@@ -355,7 +356,7 @@ public class LetterboxdLogController : ControllerBase
                 {
                     foreach (var entry in entries.Where(e => string.Equals(e.UserId, userIdStr, StringComparison.OrdinalIgnoreCase)))
                     {
-                        var r = MovieToResult(entry.MovieId ?? string.Empty, entry.DateLogged, entry.Name, entry.Year, entry.TmdbId);
+                        var r = MovieToResult(entry.MovieId ?? string.Empty, entry.DateLogged, entry.Name, entry.Year, entry.TmdbId, entry.Rewatch ?? false);
                         if (r != null)
                         {
                             AddResult(r);
@@ -452,6 +453,8 @@ public class LetterboxdLogController : ControllerBase
         public string? DateLogged { get; set; }
 
         public string? TmdbId { get; set; }
+
+        public bool? Rewatch { get; set; }
     }
 
     private sealed class HistoryResult
@@ -465,5 +468,7 @@ public class LetterboxdLogController : ControllerBase
         public string? DateLogged { get; set; }
 
         public string? LetterboxdUrl { get; set; }
+
+        public bool Rewatch { get; set; }
     }
 }

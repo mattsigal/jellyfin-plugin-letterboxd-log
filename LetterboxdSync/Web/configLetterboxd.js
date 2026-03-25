@@ -464,6 +464,7 @@ export default function (view, params) {
                     <div style="font-size: 0.85em; color: #888;">${entry.Year || ''}</div>
                 </div>
                 <div style="flex: 1;">${formatDateLogged(entry.DateLogged)}</div>
+                <div style="flex: 0.5; text-align: center;">${entry.Rewatch ? '<span style="color: #aa5cc3;">&#x21bb;</span>' : ''}</div>
                 <div style="flex: 1; text-align: right;">${lbxLink}</div>
             `;
             body.appendChild(row);

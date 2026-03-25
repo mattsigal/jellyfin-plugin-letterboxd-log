@@ -211,7 +211,7 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
                 SaveSyncCache(syncCache);
 
                 _logger.LogInformation("Real-time sync: Already logged today ({Date}) — {Movie}", viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), title);
-                AppendHistory(userId.ToString("N"), movie.Id.ToString("N"), title, movie.ProductionYear, movie.GetProviderId(MetadataProvider.Tmdb));
+                AppendHistory(userId.ToString("N"), movie.Id.ToString("N"), title, movie.ProductionYear, movie.GetProviderId(MetadataProvider.Tmdb), isRewatch);
                 return;
             }
 
@@ -235,7 +235,7 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
             string rewatchLabel = isRewatch ? " (rewatch)" : string.Empty;
             _logger.LogInformation("Real-time sync: Logged {Movie}{Rewatch} for {User} on {Date}", title, rewatchLabel, user.Username, viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
 
-            AppendHistory(userId.ToString("N"), movie.Id.ToString("N"), title, movie.ProductionYear, movie.GetProviderId(MetadataProvider.Tmdb));
+            AppendHistory(userId.ToString("N"), movie.Id.ToString("N"), title, movie.ProductionYear, movie.GetProviderId(MetadataProvider.Tmdb), isRewatch);
         }
         catch (Exception ex)
         {
@@ -273,7 +273,7 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
         }
     }
 
-    private void AppendHistory(string userId, string movieId, string name, int? year, string? tmdbId)
+    private void AppendHistory(string userId, string movieId, string name, int? year, string? tmdbId, bool rewatch = false)
     {
         try
         {
@@ -304,7 +304,8 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
                     ["Name"] = name,
                     ["Year"] = year,
                     ["DateLogged"] = dateLogged,
-                    ["TmdbId"] = tmdbId
+                    ["TmdbId"] = tmdbId,
+                    ["Rewatch"] = rewatch
                 });
 
                 File.WriteAllText(HistoryPath, JsonSerializer.Serialize(history, HistorySerializerOptions));
