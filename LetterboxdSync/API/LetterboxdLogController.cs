@@ -364,7 +364,7 @@ public class LetterboxdLogController : ControllerBase
             if (skipTag != null && !hasIgnore)
             {
                 var datePart = skipTag.Split(':').Length > 1 ? skipTag.Split(':')[1] : null;
-                var tmdbId = m.GetProviderId(MetadataProvider.Tmdb);
+                var tmdbId = m.GetProviderId(MediaBrowser.Model.Entities.MetadataProvider.Tmdb);
 
                 result.Add(new HistoryResult
                 {

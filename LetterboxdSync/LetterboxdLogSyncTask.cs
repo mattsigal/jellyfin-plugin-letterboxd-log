@@ -27,6 +27,7 @@ public class LetterboxdLogSyncTask : IScheduledTask
     // Key = "userId:movieId:dateString", Value = UTC timestamp of cache entry.
     // Survives across hourly runs (same plugin lifetime), cleared on Jellyfin restart.
     private static readonly ConcurrentDictionary<string, DateTime> _syncCache = new();
+    private static readonly JsonSerializerOptions HistorySerializerOptions = new() { WriteIndented = true };
 
     private readonly ILogger<LetterboxdLogSyncTask> _logger;
     private readonly ILibraryManager _libraryManager;
@@ -52,8 +53,6 @@ public class LetterboxdLogSyncTask : IScheduledTask
         }
 
     private string CachePath => Path.Combine(Path.GetDirectoryName(Plugin.Instance!.ConfigurationFilePath) ?? string.Empty, "LetterboxdLog_SyncCache.json");
-
-    private static readonly JsonSerializerOptions HistorySerializerOptions = new() { WriteIndented = true };
 
     private string HistoryPath => Path.Combine(Path.GetDirectoryName(Plugin.Instance!.ConfigurationFilePath) ?? string.Empty, "LetterboxdLog_History.json");
 
