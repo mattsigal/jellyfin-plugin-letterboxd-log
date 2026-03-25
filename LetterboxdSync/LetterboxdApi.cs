@@ -605,7 +605,39 @@ public class LetterboxdApi : IDisposable
 
                     if (status == 403)
                     {
-                        throw new InvalidOperationException("403 Forbidden during diary entry: " + (body.Length > 500 ? body.Substring(0, 500) : body));
+                        bool isCloudflare = body.Contains("Just a moment", StringComparison.OrdinalIgnoreCase)
+                            || body.Contains("cloudflare", StringComparison.OrdinalIgnoreCase)
+                            || body.Contains("cf-", StringComparison.OrdinalIgnoreCase);
+                        string hint = isCloudflare
+                            ? " [CLOUDFLARE BLOCK — cookies/user-agent may be stale. Update Cloudflare bypass settings.]"
+                            : " [AUTH ISSUE — CSRF token or session may have expired.]";
+                        throw new InvalidOperationException($"403 Forbidden during diary entry.{hint} Body: " + (body.Length > 500 ? body.Substring(0, 500) : body));
+                    }
+
+                    if (status == 404)
+                    {
+                        bool isLetterboxdPage = body.Contains("letterboxd", StringComparison.OrdinalIgnoreCase)
+                            || body.Contains("<html", StringComparison.OrdinalIgnoreCase);
+                        bool isCloudflare = body.Contains("Just a moment", StringComparison.OrdinalIgnoreCase)
+                            || body.Contains("cloudflare", StringComparison.OrdinalIgnoreCase);
+
+                        string hint;
+                        if (isCloudflare)
+                        {
+                            hint = " [CLOUDFLARE BLOCK — not a real 404. Update Cloudflare bypass settings.]";
+                        }
+                        else if (isLetterboxdPage)
+                        {
+                            hint = $" [POSSIBLE API CHANGE — Letterboxd returned a real 404 for {url}. "
+                                + "The diary entry endpoint may have moved. Check if Letterboxd has changed their website "
+                                + "by inspecting a manual diary save in browser DevTools (Network tab) and comparing the POST URL.]";
+                        }
+                        else
+                        {
+                            hint = $" [UNKNOWN 404 on {url} — response is not recognizable Letterboxd HTML.]";
+                        }
+
+                        throw new InvalidOperationException($"404 Not Found during diary entry.{hint} Body: " + (body.Length > 500 ? body.Substring(0, 500) : body));
                     }
 
                     throw new InvalidOperationException($"Letterboxd returned {status} on {url}: " + (body.Length > 500 ? body.Substring(0, 500) : body));
