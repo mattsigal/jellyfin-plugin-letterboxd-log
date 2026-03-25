@@ -54,7 +54,7 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
                 EnableInMainMenu = true,
                 MenuSection = "server",
                 MenuIcon = "movie",
-                DisplayName = "LetterboxdLog"
+                DisplayName = "Letterboxd Log"
             },
             new PluginPageInfo
             {

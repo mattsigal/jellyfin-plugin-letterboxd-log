@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Jellyfin.Data.Enums;
 using LetterboxdLog.API.Models;
@@ -100,6 +102,7 @@ public class LetterboxdLogController : ControllerBase
             Recursive = true
         });
 
+        // Build selected playlist membership set
         HashSet<Guid> playlistItems = new();
         if (!string.IsNullOrEmpty(playlistId) && Guid.TryParse(playlistId, out var playlistGuid))
         {
@@ -118,10 +121,37 @@ public class LetterboxdLogController : ControllerBase
             }
         }
 
+        // Build all-playlists lookup: movieId -> list of playlist names
+        var allPlaylists = _libraryManager.GetItemList(new InternalItemsQuery
+        {
+            IncludeItemTypes = new[] { BaseItemKind.Playlist },
+            Recursive = true
+        }).Where(p => p is Playlist && p.SourceType != SourceType.Channel).Cast<Playlist>().ToList();
+
+        var moviePlaylistMap = new Dictionary<Guid, List<string>>();
+        foreach (var pl in allPlaylists)
+        {
+            var children = pl.GetItemList(new InternalItemsQuery(user)
+            {
+                Recursive = false,
+                DtoOptions = new MediaBrowser.Controller.Dto.DtoOptions(true)
+            });
+            foreach (var child in children)
+            {
+                if (!moviePlaylistMap.ContainsKey(child.Id))
+                {
+                    moviePlaylistMap[child.Id] = new List<string>();
+                }
+
+                moviePlaylistMap[child.Id].Add(pl.Name);
+            }
+        }
+
         var result = movies.Select(m =>
         {
             var userData = _userDataManager.GetUserData(user, m);
             var tags = m.Tags.ToList();
+            moviePlaylistMap.TryGetValue(m.Id, out var plNames);
             return new
             {
                 Id = m.Id.ToString("N"),
@@ -130,7 +160,8 @@ public class LetterboxdLogController : ControllerBase
                 IsPlayed = userData?.Played ?? false,
                 HasIgnore = tags.Contains(".ignore", StringComparer.OrdinalIgnoreCase),
                 SkipTag = tags.FirstOrDefault(t => t.StartsWith("LetterboxdSkip:", StringComparison.OrdinalIgnoreCase)),
-                IsInPlaylist = playlistItems.Contains(m.Id)
+                IsInPlaylist = playlistItems.Contains(m.Id),
+                AllPlaylists = plNames ?? new List<string>()
             };
         }).OrderBy(m => m.Name);
 
@@ -247,5 +278,124 @@ public class LetterboxdLogController : ControllerBase
         await movie.UpdateToRepositoryAsync(ItemUpdateType.MetadataEdit, default).ConfigureAwait(false);
 
         return Ok();
+    }
+
+    [HttpGet("Jellyfin.Plugin.LetterboxdLog/GetHistory")]
+    public IActionResult GetHistory([FromQuery] string userId)
+    {
+        if (!Guid.TryParse(userId, out var userGuid))
+        {
+            return BadRequest("Invalid user ID");
+        }
+
+        var user = _userManager.GetUserById(userGuid);
+        if (user == null)
+        {
+            return BadRequest("User not found");
+        }
+
+        var result = new List<object>();
+
+        // Source 1: Persistent history log (written by sync task)
+        var historyPath = Path.Combine(
+            Path.GetDirectoryName(Plugin.Instance!.ConfigurationFilePath) ?? string.Empty,
+            "LetterboxdLog_History.json");
+
+        if (File.Exists(historyPath))
+        {
+            try
+            {
+                var json = File.ReadAllText(historyPath);
+                var entries = JsonSerializer.Deserialize<List<HistoryEntry>>(json);
+                if (entries != null)
+                {
+                    foreach (var entry in entries.Where(e => string.Equals(e.UserId, userGuid.ToString("N"), StringComparison.OrdinalIgnoreCase)))
+                    {
+                        var movie = _libraryManager.GetItemById(Guid.Parse(entry.MovieId));
+                        var letterboxdUrl = !string.IsNullOrEmpty(entry.TmdbId)
+                            ? $"https://letterboxd.com/tmdb/{entry.TmdbId}/"
+                            : null;
+
+                        result.Add(new
+                        {
+                            Id = entry.MovieId,
+                            Name = movie?.Name ?? entry.Name ?? "Unknown",
+                            Year = movie?.ProductionYear ?? entry.Year,
+                            DateLogged = entry.DateLogged,
+                            LetterboxdUrl = letterboxdUrl
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error reading history file");
+            }
+        }
+
+        // Source 2: Fall back to tag-based detection for movies not in the history log
+        var historyMovieIds = new HashSet<string>(result.Select(r => ((dynamic)r).Id?.ToString() ?? string.Empty));
+
+        var movies = _libraryManager.GetItemList(new InternalItemsQuery(user)
+        {
+            IncludeItemTypes = new[] { BaseItemKind.Movie },
+            IsVirtualItem = false,
+            IsPlayed = true,
+            Recursive = true
+        });
+
+        foreach (var m in movies)
+        {
+            var movieIdStr = m.Id.ToString("N");
+            if (historyMovieIds.Contains(movieIdStr))
+            {
+                continue;
+            }
+
+            var tags = m.Tags.ToList();
+            bool hasIgnore = tags.Contains(".ignore", StringComparer.OrdinalIgnoreCase);
+            var skipTag = tags.FirstOrDefault(t => t.StartsWith("LetterboxdSkip:", StringComparison.OrdinalIgnoreCase));
+
+            // Only include movies that were synced (have skip tag but no .ignore)
+            if (skipTag != null && !hasIgnore)
+            {
+                var datePart = skipTag.Split(':').Length > 1 ? skipTag.Split(':')[1] : null;
+                var tmdbId = m.GetProviderId(MetadataProvider.Tmdb);
+                var letterboxdUrl = !string.IsNullOrEmpty(tmdbId)
+                    ? $"https://letterboxd.com/tmdb/{tmdbId}/"
+                    : null;
+
+                result.Add(new
+                {
+                    Id = movieIdStr,
+                    Name = m.Name,
+                    Year = m.ProductionYear,
+                    DateLogged = datePart,
+                    LetterboxdUrl = letterboxdUrl
+                });
+            }
+        }
+
+        // Sort by date descending (most recent first)
+        var sorted = result
+            .OrderByDescending(r => ((dynamic)r).DateLogged ?? string.Empty)
+            .ToList();
+
+        return Ok(sorted);
+    }
+
+    private class HistoryEntry
+    {
+        public string? UserId { get; set; }
+
+        public string? MovieId { get; set; }
+
+        public string? Name { get; set; }
+
+        public int? Year { get; set; }
+
+        public string? DateLogged { get; set; }
+
+        public string? TmdbId { get; set; }
     }
 }

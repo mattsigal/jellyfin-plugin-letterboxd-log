@@ -47,6 +47,9 @@ export default function (view, params) {
             if (targetId === 'MediaLibraryTab') {
                 loadMovies(view.querySelector('#libraryUserSelect').value, view.querySelector('#selectPlaylist').value);
             }
+            if (targetId === 'HistoryTab') {
+                loadHistory(view.querySelector('#historyUserSelect').value);
+            }
         });
     });
 
@@ -55,10 +58,12 @@ export default function (view, params) {
         const selectUsers = view.querySelector('#usersJellyfin');
         const libraryUserSelect = view.querySelector('#libraryUserSelect');
         const playlistSelect = view.querySelector('#selectPlaylist');
+        const historyUserSelect = view.querySelector('#historyUserSelect');
 
         selectUsers.innerHTML = '';
         libraryUserSelect.innerHTML = '';
         playlistSelect.innerHTML = '';
+        historyUserSelect.innerHTML = '';
 
         // Load Playlists
         const playlistUrl = ApiClient.getUrl('Jellyfin.Plugin.LetterboxdLog/GetPlaylists');
@@ -92,6 +97,7 @@ export default function (view, params) {
                 option.textContent = user.Name;
                 selectUsers.appendChild(option);
                 libraryUserSelect.appendChild(option.cloneNode(true));
+                historyUserSelect.appendChild(option.cloneNode(true));
             }
 
             ApiClient.getCurrentUser().then(currentUser => {
@@ -100,6 +106,7 @@ export default function (view, params) {
                     if (exists) {
                         selectUsers.value = currentUser.Id;
                         libraryUserSelect.value = currentUser.Id;
+                        historyUserSelect.value = currentUser.Id;
                     }
                 }
                 loadAccountConfig(selectUsers.value);
@@ -140,8 +147,15 @@ export default function (view, params) {
         });
     }
 
+    // Store loaded movies for client-side filtering
+    let _allMovies = [];
+    let _currentUserId = '';
+    let _currentPlaylistId = '';
+
     function loadMovies(userId, playlistId) {
         if (!userId) return;
+        _currentUserId = userId;
+        _currentPlaylistId = playlistId;
 
         const body = view.querySelector('#movieListBody');
         body.innerHTML = '<div style="padding: 20px; text-align: center;">Loading movies...</div>';
@@ -153,50 +167,73 @@ export default function (view, params) {
 
         const url = ApiClient.getUrl('Jellyfin.Plugin.LetterboxdLog/GetMovies', params);
         ApiClient.getJSON(url).then(movies => {
-            body.innerHTML = '';
-            if (!movies || movies.length === 0) {
-                body.innerHTML = '<div style="padding: 20px; text-align: center;">No movies found in library.</div>';
-                return;
-            }
+            _allMovies = movies || [];
+            view.querySelector('#filterStatus').value = 'all';
+            renderMovies();
+        });
+    }
 
-            movies.forEach(movie => {
-                const row = document.createElement('div');
-                row.className = 'movieRow';
-                row.style = 'display: flex; padding: 10px; align-items: center; border-bottom: 1px solid #333; min-height: 50px;';
+    function renderMovies() {
+        const body = view.querySelector('#movieListBody');
+        const filter = view.querySelector('#filterStatus').value;
+        body.innerHTML = '';
 
-                const status = movie.IsPlayed ? (movie.HasIgnore ? '<span style="color: orange;">Watched (No Sync)</span>' : '<span style="color: #6fb03e;">Watched (Synced)</span>') : '<span style="color: #aaa;">Unwatched</span>';
-                const actionLabel = movie.IsPlayed && movie.HasIgnore ? 'Reset Status' : 'Mark Watched (No Sync)';
-                const actionClass = movie.IsPlayed && movie.HasIgnore ? 'button-flat' : 'button-accent';
-                const playlistChecked = movie.IsInPlaylist ? 'checked' : '';
+        let movies = _allMovies;
+        if (filter === 'unwatched') {
+            movies = movies.filter(m => !m.IsPlayed);
+        } else if (filter === 'watched-nosync') {
+            movies = movies.filter(m => m.IsPlayed && m.HasIgnore);
+        } else if (filter === 'watched-synced') {
+            movies = movies.filter(m => m.IsPlayed && !m.HasIgnore);
+        }
 
-                row.innerHTML = `
-                    <div style="flex: 2;">
-                        <div style="font-weight: 500;">${movie.Name}</div>
-                        <div style="font-size: 0.85em; color: #888;">${movie.Year || ''}</div>
-                    </div>
-                    <div style="flex: 1;" class="statusText">${status}</div>
-                    <div style="flex: 1; text-align: center;">
-                        <input type="checkbox" class="chkPlaylist" data-id="${movie.Id}" ${playlistChecked} />
-                    </div>
-                    <div style="flex: 1; text-align: right;">
-                        <button is="emby-button" class="raised ${actionClass} btnMark" style="margin: 0;" data-id="${movie.Id}" data-watched="${!(movie.IsPlayed && movie.HasIgnore)}">
-                            <span>${actionLabel}</span>
-                        </button>
-                    </div>
-                `;
-                body.appendChild(row);
+        if (movies.length === 0) {
+            body.innerHTML = '<div style="padding: 20px; text-align: center;">No movies found.</div>';
+            return;
+        }
+
+        const serverBase = ApiClient.serverAddress();
+
+        movies.forEach(movie => {
+            const row = document.createElement('div');
+            row.className = 'movieRow';
+            row.style = 'display: flex; padding: 10px; align-items: center; border-bottom: 1px solid #333; min-height: 50px;';
+
+            const status = movie.IsPlayed ? (movie.HasIgnore ? '<span style="color: orange;">Watched (No Sync)</span>' : '<span style="color: #6fb03e;">Watched (Synced)</span>') : '<span style="color: #aaa;">Unwatched</span>';
+            const actionLabel = movie.IsPlayed && movie.HasIgnore ? 'Reset Status' : 'Mark Watched (No Sync)';
+            const actionClass = movie.IsPlayed && movie.HasIgnore ? 'button-flat' : 'button-accent';
+            const playlistChecked = movie.IsInPlaylist ? 'checked' : '';
+            const allPlaylistsText = (movie.AllPlaylists && movie.AllPlaylists.length > 0) ? movie.AllPlaylists.join(', ') : '<span style="color: #555;">—</span>';
+            const jellyfinUrl = serverBase + '/web/index.html#!/details?id=' + movie.Id;
+
+            row.innerHTML = `
+                <div style="flex: 2;">
+                    <div style="font-weight: 500;"><a href="${jellyfinUrl}" target="_blank" style="color: #00a4dc; text-decoration: none;">${movie.Name}</a></div>
+                    <div style="font-size: 0.85em; color: #888;">${movie.Year || ''}</div>
+                </div>
+                <div style="flex: 1;" class="statusText">${status}</div>
+                <div style="flex: 1; font-size: 0.85em; color: #aaa;">${allPlaylistsText}</div>
+                <div style="flex: 1; text-align: center;">
+                    <input type="checkbox" class="chkPlaylist" data-id="${movie.Id}" ${playlistChecked} />
+                </div>
+                <div style="flex: 1; text-align: right;">
+                    <button is="emby-button" class="raised ${actionClass} btnMark" style="margin: 0;" data-id="${movie.Id}" data-watched="${!(movie.IsPlayed && movie.HasIgnore)}">
+                        <span>${actionLabel}</span>
+                    </button>
+                </div>
+            `;
+            body.appendChild(row);
+        });
+
+        body.querySelectorAll('.btnMark').forEach(btn => {
+            btn.addEventListener('click', function () {
+                markWatched(this, _currentUserId, _currentPlaylistId, this.getAttribute('data-id'), this.getAttribute('data-watched') === 'true');
             });
+        });
 
-            body.querySelectorAll('.btnMark').forEach(btn => {
-                btn.addEventListener('click', function () {
-                    markWatched(this, userId, playlistId, this.getAttribute('data-id'), this.getAttribute('data-watched') === 'true');
-                });
-            });
-
-            body.querySelectorAll('.chkPlaylist').forEach(chk => {
-                chk.addEventListener('change', function () {
-                    togglePlaylist(userId, playlistId, this.getAttribute('data-id'), this.checked);
-                });
+        body.querySelectorAll('.chkPlaylist').forEach(chk => {
+            chk.addEventListener('change', function () {
+                togglePlaylist(_currentUserId, _currentPlaylistId, this.getAttribute('data-id'), this.checked);
             });
         });
     }
@@ -256,9 +293,57 @@ export default function (view, params) {
         loadMovies(e.target.value, view.querySelector('#selectPlaylist').value);
     });
 
+    view.querySelector('#filterStatus').addEventListener('change', function () {
+        renderMovies();
+    });
+
+    view.querySelector('#historyUserSelect').addEventListener('change', function (e) {
+        loadHistory(e.target.value);
+    });
+
     view.querySelector('#usersJellyfin').addEventListener('change', function (e) {
         loadAccountConfig(e.target.value);
     });
+
+    function loadHistory(userId) {
+        if (!userId) return;
+
+        const body = view.querySelector('#historyListBody');
+        body.innerHTML = '<div style="padding: 20px; text-align: center;">Loading history...</div>';
+
+        const url = ApiClient.getUrl('Jellyfin.Plugin.LetterboxdLog/GetHistory', { userId: userId });
+        ApiClient.getJSON(url).then(entries => {
+            body.innerHTML = '';
+            if (!entries || entries.length === 0) {
+                body.innerHTML = '<div style="padding: 20px; text-align: center;">No Letterboxd history found.</div>';
+                return;
+            }
+
+            const serverBase = ApiClient.serverAddress();
+
+            entries.forEach(entry => {
+                const row = document.createElement('div');
+                row.style = 'display: flex; padding: 10px; align-items: center; border-bottom: 1px solid #333; min-height: 50px;';
+
+                const jellyfinUrl = serverBase + '/web/index.html#!/details?id=' + entry.Id;
+                const lbxLink = entry.LetterboxdUrl
+                    ? `<a href="${entry.LetterboxdUrl}" target="_blank" style="color: #00c030; text-decoration: none;">Open Diary Entry</a>`
+                    : '<span style="color: #555;">—</span>';
+
+                row.innerHTML = `
+                    <div style="flex: 2;">
+                        <div style="font-weight: 500;"><a href="${jellyfinUrl}" target="_blank" style="color: #00a4dc; text-decoration: none;">${entry.Name}</a></div>
+                        <div style="font-size: 0.85em; color: #888;">${entry.Year || ''}</div>
+                    </div>
+                    <div style="flex: 1;">${entry.DateLogged || ''}</div>
+                    <div style="flex: 1; text-align: right;">${lbxLink}</div>
+                `;
+                body.appendChild(row);
+            });
+        }).catch(() => {
+            body.innerHTML = '<div style="padding: 20px; text-align: center;">Error loading history.</div>';
+        });
+    }
 
     view.querySelector('#LetterboxdLogConfigForm').addEventListener('submit', function (e) {
         e.preventDefault();

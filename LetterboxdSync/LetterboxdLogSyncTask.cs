@@ -53,6 +53,8 @@ public class LetterboxdLogSyncTask : IScheduledTask
 
     private string CachePath => Path.Combine(Path.GetDirectoryName(Plugin.Instance!.ConfigurationFilePath) ?? string.Empty, "LetterboxdLog_SyncCache.json");
 
+    private string HistoryPath => Path.Combine(Path.GetDirectoryName(Plugin.Instance!.ConfigurationFilePath) ?? string.Empty, "LetterboxdLog_History.json");
+
     private static PluginConfiguration Configuration =>
             Plugin.Instance!.Configuration;
 
@@ -97,6 +99,48 @@ public class LetterboxdLogSyncTask : IScheduledTask
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error saving Letterboxd sync cache to {Path}", CachePath);
+        }
+    }
+
+    private void AppendHistory(string userId, string movieId, string name, int? year, string dateLogged, string? tmdbId)
+    {
+        try
+        {
+            List<Dictionary<string, object?>> history;
+            if (File.Exists(HistoryPath))
+            {
+                var existing = File.ReadAllText(HistoryPath);
+                history = JsonSerializer.Deserialize<List<Dictionary<string, object?>>>(existing) ?? new();
+            }
+            else
+            {
+                history = new();
+            }
+
+            // Avoid duplicates
+            bool alreadyExists = history.Any(e =>
+                e.TryGetValue("UserId", out var u) && string.Equals(u?.ToString(), userId, StringComparison.OrdinalIgnoreCase) &&
+                e.TryGetValue("MovieId", out var m) && string.Equals(m?.ToString(), movieId, StringComparison.OrdinalIgnoreCase) &&
+                e.TryGetValue("DateLogged", out var d) && string.Equals(d?.ToString(), dateLogged, StringComparison.OrdinalIgnoreCase));
+
+            if (!alreadyExists)
+            {
+                history.Add(new Dictionary<string, object?>
+                {
+                    ["UserId"] = userId,
+                    ["MovieId"] = movieId,
+                    ["Name"] = name,
+                    ["Year"] = year,
+                    ["DateLogged"] = dateLogged,
+                    ["TmdbId"] = tmdbId
+                });
+
+                File.WriteAllText(HistoryPath, JsonSerializer.Serialize(history, new JsonSerializerOptions { WriteIndented = true }));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error appending to Letterboxd history log");
         }
     }
 
@@ -309,6 +353,14 @@ public class LetterboxdLogSyncTask : IScheduledTask
                             }
 
                             _logger.LogInformation("Film already logged in Letterboxd for this date ({Date}) User: {Username} Movie: {Movie}", viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), user.Username, title);
+
+                            AppendHistory(
+                                user.Id.ToString("N"),
+                                movie.Id.ToString("N"),
+                                title,
+                                movie.ProductionYear,
+                                viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                                movie.GetProviderId(MetadataProvider.Tmdb));
                         }
                         else
                         {
@@ -324,6 +376,14 @@ public class LetterboxdLogSyncTask : IScheduledTask
                             }
 
                             _logger.LogInformation("Film logged in Letterboxd User: {Username} Movie: {Movie} Date: {ViewingDate}", user.Username, title, viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+
+                            AppendHistory(
+                                user.Id.ToString("N"),
+                                movie.Id.ToString("N"),
+                                title,
+                                movie.ProductionYear,
+                                viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                                movie.GetProviderId(MetadataProvider.Tmdb));
                         }
                     }
                     catch (Exception ex)

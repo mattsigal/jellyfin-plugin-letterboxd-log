@@ -5,7 +5,8 @@
         <div class="content-primary">
             <div id="lbxTabs" style="display: flex; gap: 0; margin-bottom: 1.5em;">
                 <button type="button" class="lbx-tab lbx-tab-active" data-tab="SettingsTab" style="padding: 10px 24px; border: none; cursor: pointer; font-size: 1em; font-weight: 600; background: #00a4dc; color: #fff; border-radius: 4px 0 0 4px;">Settings</button>
-                <button type="button" class="lbx-tab" data-tab="MediaLibraryTab" style="padding: 10px 24px; border: none; cursor: pointer; font-size: 1em; font-weight: 600; background: #333; color: #ccc; border-radius: 0 4px 4px 0;">Media Library</button>
+                <button type="button" class="lbx-tab" data-tab="MediaLibraryTab" style="padding: 10px 24px; border: none; cursor: pointer; font-size: 1em; font-weight: 600; background: #333; color: #ccc;">Media Library</button>
+                <button type="button" class="lbx-tab" data-tab="HistoryTab" style="padding: 10px 24px; border: none; cursor: pointer; font-size: 1em; font-weight: 600; background: #333; color: #ccc; border-radius: 0 4px 4px 0;">Letterboxd History</button>
             </div>
 
             <!-- Settings Tab -->
@@ -85,6 +86,8 @@
                 <h2 class="sectionTitle"><b>Media Library Management</b></h2>
                 <div class="fieldDescription">Manage local watch status and playlist membership.</div>
 
+                <br />
+
                 <div class="selectContainer">
                     <label class="inputLabel" for="libraryUserSelect">User</label>
                     <select is="emby-select" id="libraryUserSelect" class="emby-select-withcolor emby-select"></select>
@@ -96,15 +99,50 @@
                     <div class="fieldDescription">Select a playlist to manage membership for the movies below.</div>
                 </div>
 
+                <div class="selectContainer">
+                    <label class="inputLabel" for="filterStatus">Filter by Status</label>
+                    <select is="emby-select" id="filterStatus" class="emby-select-withcolor emby-select">
+                        <option value="all">All</option>
+                        <option value="unwatched">Unwatched</option>
+                        <option value="watched-nosync">Watched (No Sync)</option>
+                        <option value="watched-synced">Watched (Synced)</option>
+                    </select>
+                </div>
+
                 <div id="movieListContainer" class="paperList" style="margin-top: 2em; max-height: 700px; overflow-y: auto;">
                     <div class="movieListHeader" style="display: flex; padding: 10px; font-weight: bold; border-bottom: 2px solid #555; background: #1a1a1a;">
                         <div style="flex: 2;">Title</div>
                         <div style="flex: 1;">Status</div>
-                        <div style="flex: 1; text-align: center;">Playlist</div>
+                        <div style="flex: 1;">All Playlists</div>
+                        <div style="flex: 1; text-align: center;">Selected Playlist</div>
                         <div style="flex: 1; text-align: right;">Action</div>
                     </div>
                     <div id="movieListBody">
                         <div style="padding: 20px; text-align: center;">Loading movies...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Letterboxd History Tab -->
+            <div id="HistoryTab" class="lbx-tabContent" style="display: none;">
+                <h2 class="sectionTitle"><b>Letterboxd History</b></h2>
+                <div class="fieldDescription">Movies logged to Letterboxd from this server.</div>
+
+                <br />
+
+                <div class="selectContainer">
+                    <label class="inputLabel" for="historyUserSelect">User</label>
+                    <select is="emby-select" id="historyUserSelect" class="emby-select-withcolor emby-select"></select>
+                </div>
+
+                <div id="historyListContainer" class="paperList" style="margin-top: 2em; max-height: 700px; overflow-y: auto;">
+                    <div class="movieListHeader" style="display: flex; padding: 10px; font-weight: bold; border-bottom: 2px solid #555; background: #1a1a1a;">
+                        <div style="flex: 2;">Title</div>
+                        <div style="flex: 1;">Date Logged</div>
+                        <div style="flex: 1; text-align: right;">Letterboxd</div>
+                    </div>
+                    <div id="historyListBody">
+                        <div style="padding: 20px; text-align: center;">Select a user to view history.</div>
                     </div>
                 </div>
             </div>
