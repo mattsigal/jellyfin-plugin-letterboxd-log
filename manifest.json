@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/mattsigal/jellyfin-plugin-letterboxd-log/main/images/letterboxd-sync.png",
     "versions": [
       {
+        "version": "1.19.0.2",
+        "changelog": "- v1.19.0.2: Cache Media Library tab to avoid re-fetching on tab switch (ae9d3d8)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.19.0.2/LetterboxdLog-v1.19.0.2.zip",
+        "checksum": "42a2a2cf9a7a42c8d586ea57e0dd00e6",
+        "timestamp": "2026-03-25T20:23:40Z"
+      },
+      {
         "version": "1.19.0.1",
         "changelog": "- v1.19.0.1: Retry with exponential backoff on 403/429 responses (4b67061)",
         "targetAbi": "10.11.0.0",
