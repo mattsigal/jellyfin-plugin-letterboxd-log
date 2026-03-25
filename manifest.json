@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/mattsigal/jellyfin-plugin-letterboxd-log/main/images/letterboxd-sync.png",
     "versions": [
       {
+        "version": "1.18.5.1",
+        "changelog": "- v1.18.5.1: Fix CA1307 warning in NormalizeSlug string.Replace call (50ecd6f)",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.18.5.1/LetterboxdLog-v1.18.5.1.zip",
+        "checksum": "0e5528889d564b3aa3697fd9d96318f9",
+        "timestamp": "2026-03-25T19:07:50Z"
+      },
+      {
         "version": "1.18.5.0",
         "changelog": "- fix: fully qualify MetadataProvider.Tmdb and fix field ordering (11fa689)",
         "targetAbi": "10.11.0.0",
