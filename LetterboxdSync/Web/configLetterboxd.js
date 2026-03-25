@@ -309,43 +309,73 @@ export default function (view, params) {
         loadAccountConfig(e.target.value);
     });
 
+    // Cache history per user to avoid repeated slow fetches
+    let _historyCache = {};
+
+    function formatDateLogged(dateStr) {
+        if (!dateStr) return '';
+        // If it has a T (ISO timestamp), format nicely
+        if (dateStr.includes('T')) {
+            const d = new Date(dateStr);
+            if (!isNaN(d)) {
+                return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+                    + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+            }
+        }
+        // Otherwise just return the date string as-is (e.g. "2026-03-24")
+        return dateStr;
+    }
+
     function loadHistory(userId) {
         if (!userId) return;
 
         const body = view.querySelector('#historyListBody');
+
+        // Use cache if available
+        if (_historyCache[userId]) {
+            renderHistory(_historyCache[userId]);
+            return;
+        }
+
         body.innerHTML = '<div style="padding: 20px; text-align: center;">Loading history...</div>';
 
         const url = ApiClient.getUrl('Jellyfin.Plugin.LetterboxdLog/GetHistory', { userId: userId });
         ApiClient.getJSON(url).then(entries => {
-            body.innerHTML = '';
-            if (!entries || entries.length === 0) {
-                body.innerHTML = '<div style="padding: 20px; text-align: center;">No Letterboxd history found.</div>';
-                return;
-            }
-
-            const serverBase = ApiClient.serverAddress();
-
-            entries.forEach(entry => {
-                const row = document.createElement('div');
-                row.style = 'display: flex; padding: 10px; align-items: center; border-bottom: 1px solid #333; min-height: 50px;';
-
-                const jellyfinUrl = serverBase + '/web/index.html#!/details?id=' + entry.Id;
-                const lbxLink = entry.LetterboxdUrl
-                    ? `<a href="${entry.LetterboxdUrl}" target="_blank" style="color: #00c030; text-decoration: none;">Open Diary Entry</a>`
-                    : '<span style="color: #555;">—</span>';
-
-                row.innerHTML = `
-                    <div style="flex: 2;">
-                        <div style="font-weight: 500;"><a href="${jellyfinUrl}" target="_blank" style="color: #00a4dc; text-decoration: none;">${entry.Name}</a></div>
-                        <div style="font-size: 0.85em; color: #888;">${entry.Year || ''}</div>
-                    </div>
-                    <div style="flex: 1;">${entry.DateLogged || ''}</div>
-                    <div style="flex: 1; text-align: right;">${lbxLink}</div>
-                `;
-                body.appendChild(row);
-            });
+            _historyCache[userId] = entries || [];
+            renderHistory(_historyCache[userId]);
         }).catch(() => {
             body.innerHTML = '<div style="padding: 20px; text-align: center;">Error loading history.</div>';
+        });
+    }
+
+    function renderHistory(entries) {
+        const body = view.querySelector('#historyListBody');
+        body.innerHTML = '';
+        if (!entries || entries.length === 0) {
+            body.innerHTML = '<div style="padding: 20px; text-align: center;">No Letterboxd history found.</div>';
+            return;
+        }
+
+        const serverBase = ApiClient.serverAddress();
+
+        entries.forEach(entry => {
+            const row = document.createElement('div');
+            row.style = 'display: flex; padding: 10px; align-items: center; border-bottom: 1px solid #333; min-height: 50px;';
+
+            const jellyfinUrl = serverBase + '/web/index.html#!/details?id=' + entry.Id;
+            const lbxLink = entry.LetterboxdUrl
+                ? `<a href="${entry.LetterboxdUrl}" target="_blank" style="color: #00c030; text-decoration: none;">Open Diary Entry</a>`
+                : '<span style="color: #555;">—</span>';
+
+            row.innerHTML = `
+                <div style="flex: 2;">
+                    <div style="font-weight: 500;"><a href="${jellyfinUrl}" target="_blank" style="color: #00a4dc; text-decoration: none;">${entry.Name}</a></div>
+                    <div style="font-size: 0.85em; color: #888;">${entry.Year || ''}</div>
+                </div>
+                <div style="flex: 1;">${formatDateLogged(entry.DateLogged)}</div>
+                <div style="flex: 1; text-align: right;">${lbxLink}</div>
+            `;
+            body.appendChild(row);
         });
     }
 

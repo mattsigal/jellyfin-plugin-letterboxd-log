@@ -298,17 +298,49 @@ public class LetterboxdLogController : ControllerBase
         var configDir = System.IO.Path.GetDirectoryName(Plugin.Instance!.ConfigurationFilePath) ?? string.Empty;
         var userIdStr = userGuid.ToString("N");
 
-        // Dedup key: movieId+date
+        // Pre-fetch all played movies once into a dictionary for fast lookups
+        var allMovies = _libraryManager.GetItemList(new InternalItemsQuery(user)
+        {
+            IncludeItemTypes = new[] { BaseItemKind.Movie },
+            IsVirtualItem = false,
+            IsPlayed = true,
+            Recursive = true
+        });
+        var movieMap = new Dictionary<string, BaseItem>(StringComparer.OrdinalIgnoreCase);
+        foreach (var m in allMovies)
+        {
+            movieMap[m.Id.ToString("N")] = m;
+        }
+
+        // Dedup key: movieId+date (date portion only for dedup)
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var result = new List<HistoryResult>();
 
         void AddResult(HistoryResult r)
         {
-            var key = $"{r.Id}:{r.DateLogged}";
+            // Dedup on movieId + date-only (strip time for comparison)
+            var datePart = r.DateLogged?.Length > 10 ? r.DateLogged.Substring(0, 10) : r.DateLogged;
+            var key = $"{r.Id}:{datePart}";
             if (seen.Add(key))
             {
                 result.Add(r);
             }
+        }
+
+        HistoryResult? MovieToResult(string movieId, string? dateLogged, string? fallbackName, int? fallbackYear, string? fallbackTmdbId)
+        {
+            movieMap.TryGetValue(movieId, out var movie);
+            var tmdbId = movie?.GetProviderId(MediaBrowser.Model.Entities.MetadataProvider.Tmdb) ?? fallbackTmdbId;
+            return new HistoryResult
+            {
+                Id = movieId,
+                Name = movie?.Name ?? fallbackName ?? "Unknown",
+                Year = movie?.ProductionYear ?? fallbackYear,
+                DateLogged = dateLogged,
+                LetterboxdUrl = !string.IsNullOrEmpty(tmdbId)
+                    ? $"https://letterboxd.com/tmdb/{tmdbId}/"
+                    : null
+            };
         }
 
         // Source 1: Persistent history log (written by sync task on new syncs)
@@ -323,22 +355,11 @@ public class LetterboxdLogController : ControllerBase
                 {
                     foreach (var entry in entries.Where(e => string.Equals(e.UserId, userIdStr, StringComparison.OrdinalIgnoreCase)))
                     {
-                        BaseItem? movie = null;
-                        if (!string.IsNullOrEmpty(entry.MovieId) && Guid.TryParse(entry.MovieId, out var movieGuid))
+                        var r = MovieToResult(entry.MovieId ?? string.Empty, entry.DateLogged, entry.Name, entry.Year, entry.TmdbId);
+                        if (r != null)
                         {
-                            movie = _libraryManager.GetItemById(movieGuid);
+                            AddResult(r);
                         }
-
-                        AddResult(new HistoryResult
-                        {
-                            Id = entry.MovieId ?? string.Empty,
-                            Name = movie?.Name ?? entry.Name ?? "Unknown",
-                            Year = movie?.ProductionYear ?? entry.Year,
-                            DateLogged = entry.DateLogged,
-                            LetterboxdUrl = !string.IsNullOrEmpty(entry.TmdbId)
-                                ? $"https://letterboxd.com/tmdb/{entry.TmdbId}/"
-                                : null
-                        });
                     }
                 }
             }
@@ -374,22 +395,12 @@ public class LetterboxdLogController : ControllerBase
                         var movieId = parts[1];
                         var dateLogged = parts[2];
 
-                        if (Guid.TryParse(movieId, out var movieGuid))
+                        if (movieMap.ContainsKey(movieId))
                         {
-                            var movie = _libraryManager.GetItemById(movieGuid);
-                            if (movie != null)
+                            var r = MovieToResult(movieId, dateLogged, null, null, null);
+                            if (r != null)
                             {
-                                var tmdbId = movie.GetProviderId(MediaBrowser.Model.Entities.MetadataProvider.Tmdb);
-                                AddResult(new HistoryResult
-                                {
-                                    Id = movieId,
-                                    Name = movie.Name,
-                                    Year = movie.ProductionYear,
-                                    DateLogged = dateLogged,
-                                    LetterboxdUrl = !string.IsNullOrEmpty(tmdbId)
-                                        ? $"https://letterboxd.com/tmdb/{tmdbId}/"
-                                        : null
-                                });
+                                AddResult(r);
                             }
                         }
                     }
@@ -402,15 +413,7 @@ public class LetterboxdLogController : ControllerBase
         }
 
         // Source 3: Tag-based detection — movies with LetterboxdSkip tag but no .ignore
-        var movies = _libraryManager.GetItemList(new InternalItemsQuery(user)
-        {
-            IncludeItemTypes = new[] { BaseItemKind.Movie },
-            IsVirtualItem = false,
-            IsPlayed = true,
-            Recursive = true
-        });
-
-        foreach (var m in movies)
+        foreach (var m in allMovies)
         {
             var movieIdStr = m.Id.ToString("N");
             var tags = m.Tags.ToList();
@@ -420,18 +423,11 @@ public class LetterboxdLogController : ControllerBase
             if (skipTag != null && !hasIgnore)
             {
                 var datePart = skipTag.Split(':').Length > 1 ? skipTag.Split(':')[1] : null;
-                var tmdbId = m.GetProviderId(MediaBrowser.Model.Entities.MetadataProvider.Tmdb);
-
-                AddResult(new HistoryResult
+                var r = MovieToResult(movieIdStr, datePart, null, null, null);
+                if (r != null)
                 {
-                    Id = movieIdStr,
-                    Name = m.Name,
-                    Year = m.ProductionYear,
-                    DateLogged = datePart,
-                    LetterboxdUrl = !string.IsNullOrEmpty(tmdbId)
-                        ? $"https://letterboxd.com/tmdb/{tmdbId}/"
-                        : null
-                });
+                    AddResult(r);
+                }
             }
         }
 

@@ -360,7 +360,7 @@ public class LetterboxdLogSyncTask : IScheduledTask
                                 movie.Id.ToString("N"),
                                 title,
                                 movie.ProductionYear,
-                                viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                                DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture),
                                 movie.GetProviderId(MetadataProvider.Tmdb));
                         }
                         else
@@ -383,7 +383,7 @@ public class LetterboxdLogSyncTask : IScheduledTask
                                 movie.Id.ToString("N"),
                                 title,
                                 movie.ProductionYear,
-                                viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                                DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture),
                                 movie.GetProviderId(MetadataProvider.Tmdb));
                         }
                     }
