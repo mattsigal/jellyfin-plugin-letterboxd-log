@@ -603,15 +603,27 @@ public class LetterboxdApi : IDisposable
                         return;
                     }
 
-                    if (status == 403)
+                    if (status == 403 || status == 429)
                     {
                         bool isCloudflare = body.Contains("Just a moment", StringComparison.OrdinalIgnoreCase)
                             || body.Contains("cloudflare", StringComparison.OrdinalIgnoreCase)
                             || body.Contains("cf-", StringComparison.OrdinalIgnoreCase);
+
+                        if (attempt < 2)
+                        {
+                            // Exponential backoff: ~8s, ~18s with jitter
+                            int backoffMs = (int)(Math.Pow(2, attempt + 2) * 2000) + Random.Shared.Next(2000);
+                            log?.Invoke($"Transient {status} (Cloudflare={isCloudflare}), retrying in {backoffMs}ms...");
+                            await Task.Delay(backoffMs).ConfigureAwait(false);
+                            continue;
+                        }
+
                         string hint = isCloudflare
                             ? " [CLOUDFLARE BLOCK — cookies/user-agent may be stale. Update Cloudflare bypass settings.]"
-                            : " [AUTH ISSUE — CSRF token or session may have expired.]";
-                        throw new InvalidOperationException($"403 Forbidden during diary entry.{hint} Body: " + (body.Length > 500 ? body.Substring(0, 500) : body));
+                            : status == 429
+                                ? " [RATE LIMITED — too many requests. Try again later.]"
+                                : " [AUTH ISSUE — CSRF token or session may have expired.]";
+                        throw new InvalidOperationException($"{status} during diary entry after {attempt + 1} attempts.{hint} Body: " + (body.Length > 500 ? body.Substring(0, 500) : body));
                     }
 
                     if (status == 404)
