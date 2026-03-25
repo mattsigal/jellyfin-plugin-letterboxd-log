@@ -822,7 +822,7 @@ public class LetterboxdApi : IDisposable
             }
         }
 
-        return sb.ToString().Normalize(NormalizationForm.FormC).ToLowerInvariant().Replace("--", "-").Trim('-');
+        return sb.ToString().Normalize(NormalizationForm.FormC).ToLowerInvariant().Replace("--", "-", StringComparison.Ordinal).Trim('-');
     }
 
     public static string RemoveAccents(string text)
