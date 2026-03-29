@@ -10,11 +10,11 @@
     "versions": [
       {
         "version": "1.20.0.0",
-        "changelog": "- v1.20.0.0: Real-time rewatch sync and .ignore tag cleanup routine (0e219fb)",
+        "changelog": "- v1.20.0.0: Real-time rewatch sync and .ignore tag cleanup routine (b622c36)",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.20.0.0/LetterboxdLog-v1.20.0.0.zip",
-        "checksum": "",
-        "timestamp": "2026-03-29T06:58:00Z"
+        "checksum": "bcd4cbbc4afdaf8a1423090aa1aed99f",
+        "timestamp": "2026-03-29T07:15:38Z"
       },
       {
         "version": "1.19.0.4",
