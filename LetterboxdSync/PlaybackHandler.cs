@@ -121,18 +121,39 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
         var movie = e.Item;
         string title = movie.OriginalTitle ?? movie.Name ?? "Unknown Title";
 
-        // Check for .ignore tag — skip if present (user explicitly excluded this movie)
+        // Skip logic (Rewatch Override)
         var movieTags = movie.Tags.ToList();
-        if (movieTags.Contains(".ignore", StringComparer.OrdinalIgnoreCase))
+        var hasIgnore = movieTags.Contains(".ignore", StringComparer.OrdinalIgnoreCase);
+        var skipTag = movieTags.FirstOrDefault(t => t.StartsWith("LetterboxdSkip:", StringComparison.OrdinalIgnoreCase));
+
+        // Compute viewing date early for tag/rewatch comparison
+        var viewingDate = DateTime.UtcNow;
+        var adjustedViewingDate = viewingDate.AddHours(account.TimezoneOffset);
+        var viewingDateOnly = new DateTime(adjustedViewingDate.Year, adjustedViewingDate.Month, adjustedViewingDate.Day);
+
+        if (skipTag != null)
+        {
+            if (DateTime.TryParse(skipTag.Split(':')[1], out DateTime skipDate))
+            {
+                if (viewingDateOnly.Date > skipDate.Date)
+                {
+                    _logger.LogInformation("Real-time sync: Rewatch detected for {Movie}: ViewingDate ({View}) > SkipDate ({Skip}). Syncing.", title, viewingDateOnly.Date, skipDate.Date);
+                    // Remove tags — will be re-added upon success
+                    movieTags.RemoveAll(t => t.StartsWith("LetterboxdSkip:", StringComparison.OrdinalIgnoreCase));
+                    movieTags.RemoveAll(t => t.Equals(".ignore", StringComparison.OrdinalIgnoreCase));
+                }
+                else
+                {
+                    _logger.LogDebug("Real-time sync: Skipping {Movie} due to recent skip tag ({Date})", title, skipDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+                    return;
+                }
+            }
+        }
+        else if (hasIgnore)
         {
             _logger.LogDebug("Real-time sync: Skipping {Movie} due to .ignore tag", title);
             return;
         }
-
-        // Compute viewing date with timezone offset
-        var viewingDate = DateTime.UtcNow;
-        var adjustedViewingDate = viewingDate.AddHours(account.TimezoneOffset);
-        var viewingDateOnly = new DateTime(adjustedViewingDate.Year, adjustedViewingDate.Month, adjustedViewingDate.Day);
 
         // Check sync cache
         string cacheKey = $"{userId:N}:{movie.Id:N}:{viewingDateOnly:yyyy-MM-dd}";
@@ -231,6 +252,18 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
             // Cache the successful sync
             syncCache[cacheKey] = DateTime.UtcNow;
             SaveSyncCache(syncCache);
+
+            // Add tags after successful sync to keep Jellyfin UI in sync
+            string todaySkip = $"LetterboxdSkip:{viewingDateOnly:yyyy-MM-dd}";
+            bool changed = false;
+            if (!movieTags.Contains(todaySkip)) { movieTags.Add(todaySkip); changed = true; }
+            if (!movieTags.Contains(".ignore")) { movieTags.Add(".ignore"); changed = true; }
+
+            if (changed)
+            {
+                movie.Tags = movieTags.ToArray();
+                await movie.UpdateToRepositoryAsync(ItemUpdateType.MetadataEdit, default).ConfigureAwait(false);
+            }
 
             string rewatchLabel = isRewatch ? " (rewatch)" : string.Empty;
             _logger.LogInformation("Real-time sync: Logged {Movie}{Rewatch} for {User} on {Date}", title, rewatchLabel, user.Username, viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));

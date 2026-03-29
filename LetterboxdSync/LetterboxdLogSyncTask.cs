@@ -171,6 +171,50 @@ public class LetterboxdLogSyncTask : IScheduledTask
             SaveCache();
         }
 
+        // Tag Cleanup Pass: Remove .ignore and LetterboxdSkip from old watches
+        // This resets the UI and facilitates re-watch detection after the filter window.
+        try
+        {
+            var moviesWithIgnore = _libraryManager.GetItemList(new InternalItemsQuery
+            {
+                IncludeItemTypes = new[] { BaseItemKind.Movie },
+                Tags = new[] { ".ignore" },
+                Recursive = true
+            });
+
+            if (moviesWithIgnore.Count > 0)
+            {
+                var cleanupDate = DateTime.Today.AddDays(-14); // 2-week sliding window for tag retention
+                int cleanupCount = 0;
+
+                foreach (var m in moviesWithIgnore)
+                {
+                    var tags = m.Tags.ToList();
+                    var skipTag = tags.FirstOrDefault(t => t.StartsWith("LetterboxdSkip:", StringComparison.OrdinalIgnoreCase));
+                    if (skipTag != null && DateTime.TryParse(skipTag.Split(':')[1], out DateTime skipDate))
+                    {
+                        if (skipDate < cleanupDate)
+                        {
+                            tags.RemoveAll(t => t.Equals(".ignore", StringComparison.OrdinalIgnoreCase));
+                            tags.RemoveAll(t => t.StartsWith("LetterboxdSkip:", StringComparison.OrdinalIgnoreCase));
+                            m.Tags = tags.ToArray();
+                            await m.UpdateToRepositoryAsync(ItemUpdateType.MetadataEdit, cancellationToken).ConfigureAwait(false);
+                            cleanupCount++;
+                        }
+                    }
+                }
+
+                if (cleanupCount > 0)
+                {
+                    _logger.LogInformation("Cleanup: Removed old .ignore tags from {Count} movies.", cleanupCount);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during Letterboxd tag cleanup pass.");
+        }
+
         var lstUsers = _userManager.Users;
         foreach (var user in lstUsers)
         {
