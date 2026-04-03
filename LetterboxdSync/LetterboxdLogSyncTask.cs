@@ -297,7 +297,7 @@ public class LetterboxdLogSyncTask : IScheduledTask
                         if (DateTime.TryParse(skipTag.Split(':')[1], out DateTime skipDate))
                         {
                             // If LastPlayed is significantly newer than the skip date (e.g. next day), treating it as a rewatch
-                            if (viewingDate.Value.Date > skipDate.Date)
+                            if (viewingDate.Value.Date > skipDate.Date.AddDays(1))
                             {
                                  _logger.LogInformation("Rewatch detected for {Movie}: LastPlayed ({Played}) > SkipDate ({Skip}). Resume syncing.", title, viewingDate.Value.Date, skipDate.Date);
 

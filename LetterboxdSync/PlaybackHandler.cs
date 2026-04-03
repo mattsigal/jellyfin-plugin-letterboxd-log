@@ -94,8 +94,19 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
         }
 
         // Must have actually played (not just opened and closed)
-        if (!e.PlayedToCompletion)
+        var movie = e.Item;
+        string title = movie.OriginalTitle ?? movie.Name ?? "Unknown Title";
+
+        // Must have actually played (not just opened and closed)
+        double percentage = 0;
+        if (movie.RunTimeTicks.HasValue && movie.RunTimeTicks.Value > 0)
         {
+            percentage = (double)e.PlaybackPositionTicks / movie.RunTimeTicks.Value;
+        }
+
+        if (!e.PlayedToCompletion && percentage < 0.9)
+        {
+            _logger.LogInformation("Real-time sync: Skipping {Movie} - Playback ended at {Percent:P0} (not played to completion).", title, percentage);
             return;
         }
 
@@ -118,8 +129,8 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
             return;
         }
 
-        var movie = e.Item;
-        string title = movie.OriginalTitle ?? movie.Name ?? "Unknown Title";
+
+        // Must have actually played (not just opened and closed)
 
         // Skip logic (Rewatch Override)
         var movieTags = movie.Tags.ToList();
