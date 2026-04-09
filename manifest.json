@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/mattsigal/jellyfin-plugin-letterboxd-log/main/images/letterboxd-sync.png",
     "versions": [
       {
+        "version": "1.22.0.0",
+        "changelog": "- v1.22.0.0: Playlist ID compatibility and UI cache invalidation",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.22.0.0/LetterboxdLog-v1.22.0.0.zip",
+        "checksum": "",
+        "timestamp": "2026-04-09T15:00:00Z"
+      },
+      {
         "version": "1.20.0.0",
         "changelog": "- v1.20.0.0: Real-time rewatch sync and .ignore tag cleanup routine (0e219fb)",
         "targetAbi": "10.11.0.0",
