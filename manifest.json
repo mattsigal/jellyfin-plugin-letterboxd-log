@@ -10,11 +10,11 @@
     "versions": [
       {
         "version": "1.23.0.2",
-        "changelog": "- fix: added missing System.Globalization using statement in controller",
+        "changelog": "- fix: added missing System.Globalization using statement (aea0b87)",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.23.0.2/LetterboxdLog-v1.23.0.2.zip",
-        "checksum": "",
-        "timestamp": "2026-04-11T00:04:00Z"
+        "checksum": "fc7e57544e13cbb0f5d96a011193571a",
+        "timestamp": "2026-04-11T07:10:21Z"
       },
       {
         "version": "1.23.0.1",
