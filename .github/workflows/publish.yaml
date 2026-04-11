@@ -10,6 +10,7 @@ permissions:
 
 env:
   DOTNET_VERSION: '9.0.x'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
   build:
