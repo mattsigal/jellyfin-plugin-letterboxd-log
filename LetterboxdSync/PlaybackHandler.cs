@@ -263,7 +263,7 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
             // Add tags after successful sync to keep Jellyfin UI in sync
             string todaySkip = $"LetterboxdSkip:{viewingDateOnly:yyyy-MM-dd}";
             bool changed = false;
-            
+
             if (!movieTags.Contains(todaySkip, StringComparer.OrdinalIgnoreCase))
             {
                 movieTags.Add(todaySkip);

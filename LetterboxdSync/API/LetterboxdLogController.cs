@@ -335,10 +335,11 @@ public class LetterboxdLogController : ControllerBase
                 {
                     // If it has a 'Z' or was parsed as UTC, we adjust it to the user's offset
                     // to match the date-only format used in the cache.
-                    if (r.DateLogged.EndsWith("Z", StringComparison.OrdinalIgnoreCase) || dt.Kind == DateTimeKind.Utc)
+                    if (r.DateLogged.EndsWith('Z') || dt.Kind == DateTimeKind.Utc)
                     {
                         dt = dt.AddHours(offset);
                     }
+
                     datePart = dt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
                 }
                 else
