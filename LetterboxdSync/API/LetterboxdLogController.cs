@@ -298,6 +298,10 @@ public class LetterboxdLogController : ControllerBase
         var configDir = System.IO.Path.GetDirectoryName(Plugin.Instance!.ConfigurationFilePath) ?? string.Empty;
         var userIdStr = userGuid.ToString("N");
 
+        var config = Plugin.Instance!.Configuration;
+        var account = config.Accounts.FirstOrDefault(a => a.UserJellyfin == userIdStr);
+        var offset = account?.TimezoneOffset ?? 0;
+
         // Pre-fetch all played movies once into a dictionary for fast lookups
         var allMovies = _libraryManager.GetItemList(new InternalItemsQuery(user)
         {
@@ -318,9 +322,35 @@ public class LetterboxdLogController : ControllerBase
 
         void AddResult(HistoryResult r)
         {
-            // Dedup on movieId + date-only (strip time for comparison)
-            var datePart = r.DateLogged?.Length > 10 ? r.DateLogged.Substring(0, 10) : r.DateLogged;
-            var key = $"{r.Id}:{datePart}";
+            if (string.IsNullOrEmpty(r.DateLogged))
+            {
+                return;
+            }
+
+            string? datePart;
+            if (r.DateLogged.Contains('T'))
+            {
+                if (DateTime.TryParse(r.DateLogged, out var dt))
+                {
+                    // If it has a 'Z' or was parsed as UTC, we adjust it to the user's offset
+                    // to match the date-only format used in the cache.
+                    if (r.DateLogged.EndsWith(\"Z\", StringComparison.OrdinalIgnoreCase) || dt.Kind == DateTimeKind.Utc)
+                    {
+                        dt = dt.AddHours(offset);
+                    }
+                    datePart = dt.ToString(\"yyyy-MM-dd\", CultureInfo.InvariantCulture);
+                }
+                else
+                {
+                    datePart = r.DateLogged.Substring(0, 10);
+                }
+            }
+            else
+            {
+                datePart = r.DateLogged;
+            }
+
+            var key = $\"{r.Id}:{datePart}\";
             if (seen.Add(key))
             {
                 result.Add(r);

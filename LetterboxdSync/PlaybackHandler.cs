@@ -232,7 +232,14 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
                 SaveSyncCache(syncCache);
 
                 _logger.LogInformation("Real-time sync: Already logged today ({Date}) — {Movie}", viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), title);
-                AppendHistory(userId.ToString("N"), movie.Id.ToString("N"), title, movie.ProductionYear, movie.GetProviderId(MetadataProvider.Tmdb), isRewatch);
+                AppendHistory(
+                    userId.ToString("N"),
+                    movie.Id.ToString("N"),
+                    title,
+                    movie.ProductionYear,
+                    adjustedViewingDate.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture),
+                    movie.GetProviderId(MetadataProvider.Tmdb),
+                    isRewatch);
                 return;
             }
 
@@ -268,7 +275,14 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
             string rewatchLabel = isRewatch ? " (rewatch)" : string.Empty;
             _logger.LogInformation("Real-time sync: Logged {Movie}{Rewatch} for {User} on {Date}", title, rewatchLabel, user.Username, viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
 
-            AppendHistory(userId.ToString("N"), movie.Id.ToString("N"), title, movie.ProductionYear, movie.GetProviderId(MetadataProvider.Tmdb), isRewatch);
+            AppendHistory(
+                userId.ToString("N"),
+                movie.Id.ToString("N"),
+                title,
+                movie.ProductionYear,
+                adjustedViewingDate.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture),
+                movie.GetProviderId(MetadataProvider.Tmdb),
+                isRewatch);
         }
         catch (Exception ex)
         {
@@ -306,7 +320,7 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
         }
     }
 
-    private void AppendHistory(string userId, string movieId, string name, int? year, string? tmdbId, bool rewatch = false)
+    private void AppendHistory(string userId, string movieId, string name, int? year, string dateLogged, string? tmdbId, bool rewatch = false)
     {
         try
         {
@@ -320,8 +334,6 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
             {
                 history = new();
             }
-
-            string dateLogged = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
 
             bool alreadyExists = history.Any(e =>
                 e.TryGetValue("UserId", out var u) && string.Equals(u?.ToString(), userId, StringComparison.OrdinalIgnoreCase) &&
