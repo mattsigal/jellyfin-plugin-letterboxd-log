@@ -10,11 +10,11 @@
     "versions": [
       {
         "version": "1.23.0.3",
-        "changelog": "- Resolved 10 compiler/StyleCop warnings\n- Fixed double-logging issue by normalizing local time offsets\n- Updated CI/CD pipeline to resolve GitHub Actions deprecations",
+        "changelog": "- Fix: CI artifact propagation and resolve remaining lint warnings (d65c7e7)",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.23.0.3/LetterboxdLog-v1.23.0.3.zip",
-        "checksum": "",
-        "timestamp": "2026-04-11T08:00:00Z"
+        "checksum": "38de141810efacbb397ec9f9201b946d",
+        "timestamp": "2026-04-11T08:03:33Z"
       },
       {
         "version": "1.23.0.2",
