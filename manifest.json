@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/mattsigal/jellyfin-plugin-letterboxd-log/main/images/letterboxd-sync.png",
     "versions": [
       {
+        "version": "1.23.0.2",
+        "changelog": "- fix: added missing System.Globalization using statement in controller",
+        "targetAbi": "10.11.0.0",
+        "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.23.0.2/LetterboxdLog-v1.23.0.2.zip",
+        "checksum": "",
+        "timestamp": "2026-04-11T00:04:00Z"
+      },
+      {
         "version": "1.23.0.1",
         "changelog": "- fix: corrected syntax error in controller and finalized 1.23 rollout",
         "targetAbi": "10.11.0.0",
