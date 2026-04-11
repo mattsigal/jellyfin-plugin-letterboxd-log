@@ -28,6 +28,8 @@ public class LetterboxdLogSyncTask : IScheduledTask
     // Survives across hourly runs (same plugin lifetime), cleared on Jellyfin restart.
     private static readonly ConcurrentDictionary<string, DateTime> _syncCache = new();
     private static readonly JsonSerializerOptions HistorySerializerOptions = new() { WriteIndented = true };
+    private static readonly BaseItemKind[] MovieKindArray = { BaseItemKind.Movie };
+    private static readonly string[] IgnoreTagArray = { ".ignore" };
 
     private readonly ILogger<LetterboxdLogSyncTask> _logger;
     private readonly ILibraryManager _libraryManager;
@@ -177,8 +179,8 @@ public class LetterboxdLogSyncTask : IScheduledTask
         {
             var moviesWithIgnore = _libraryManager.GetItemList(new InternalItemsQuery
             {
-                IncludeItemTypes = new[] { BaseItemKind.Movie },
-                Tags = new[] { ".ignore" },
+                IncludeItemTypes = MovieKindArray,
+                Tags = IgnoreTagArray,
                 Recursive = true
             });
 
@@ -227,7 +229,7 @@ public class LetterboxdLogSyncTask : IScheduledTask
 
             var lstMoviesPlayed = _libraryManager.GetItemList(new InternalItemsQuery(user)
             {
-                IncludeItemTypes = new List<BaseItemKind>() { BaseItemKind.Movie }.ToArray(),
+                IncludeItemTypes = MovieKindArray,
                 IsVirtualItem = false,
                 IsPlayed = true,
             });

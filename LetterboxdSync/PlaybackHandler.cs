@@ -263,8 +263,18 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
             // Add tags after successful sync to keep Jellyfin UI in sync
             string todaySkip = $"LetterboxdSkip:{viewingDateOnly:yyyy-MM-dd}";
             bool changed = false;
-            if (!movieTags.Contains(todaySkip)) { movieTags.Add(todaySkip); changed = true; }
-            if (!movieTags.Contains(".ignore")) { movieTags.Add(".ignore"); changed = true; }
+            
+            if (!movieTags.Contains(todaySkip, StringComparer.OrdinalIgnoreCase))
+            {
+                movieTags.Add(todaySkip);
+                changed = true;
+            }
+
+            if (!movieTags.Contains(".ignore", StringComparer.OrdinalIgnoreCase))
+            {
+                movieTags.Add(".ignore");
+                changed = true;
+            }
 
             if (changed)
             {

@@ -329,7 +329,7 @@ public class LetterboxdLogController : ControllerBase
             }
 
             string? datePart;
-            if (r.DateLogged.Contains('T'))
+            if (r.DateLogged.Contains('T', StringComparison.Ordinal))
             {
                 if (DateTime.TryParse(r.DateLogged, out var dt))
                 {
