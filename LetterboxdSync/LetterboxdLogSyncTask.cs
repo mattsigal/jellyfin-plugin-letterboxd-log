@@ -217,7 +217,7 @@ public class LetterboxdLogSyncTask : IScheduledTask
             _logger.LogError(ex, "Error during Letterboxd tag cleanup pass.");
         }
 
-        var lstUsers = _userManager.Users;
+        var lstUsers = _userManager.GetUsers();
         foreach (var user in lstUsers)
         {
             var account = Configuration.Accounts.FirstOrDefault(account => account.UserJellyfin == user.Id.ToString("N") && account.Enable);
