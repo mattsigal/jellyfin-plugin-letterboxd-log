@@ -284,6 +284,12 @@ public class LetterboxdLogSyncTask : IScheduledTask
                 DateTime? viewingDate = userItemData.LastPlayedDate;
                 string[] tags = Array.Empty<string>();
 
+                // Compute viewing date with account timezone offset
+                DateTime adjustedViewingDate = viewingDate.HasValue
+                    ? viewingDate.Value.AddHours(account.TimezoneOffset)
+                    : DateTime.UtcNow.AddHours(account.TimezoneOffset);
+                DateTime viewingDateOnly = new DateTime(adjustedViewingDate.Year, adjustedViewingDate.Month, adjustedViewingDate.Day);
+
                 // Verify "Bona Fide" Watch via Activity Log
                 // TODO: Re-enable this check once IActivityManager.GetActivityLogEntries signature is confirmed.
                 if (viewingDate.HasValue)
@@ -299,9 +305,9 @@ public class LetterboxdLogSyncTask : IScheduledTask
                         if (DateTime.TryParse(skipTag.Split(':')[1], out DateTime skipDate))
                         {
                             // If LastPlayed is significantly newer than the skip date (e.g. next day), treating it as a rewatch
-                            if (viewingDate.Value.Date > skipDate.Date)
+                            if (viewingDateOnly.Date > skipDate.Date)
                             {
-                                 _logger.LogInformation("Rewatch detected for {Movie}: LastPlayed ({Played}) > SkipDate ({Skip}). Resume syncing.", title, viewingDate.Value.Date, skipDate.Date);
+                                 _logger.LogInformation("Rewatch detected for {Movie}: LastPlayed ({Played}) > SkipDate ({Skip}). Resume syncing.", title, viewingDateOnly.Date, skipDate.Date);
 
                                  // Remove Skip Tag and .ignore robustly
                                  movieTags.RemoveAll(t => t.StartsWith("LetterboxdSkip:", StringComparison.OrdinalIgnoreCase));
@@ -316,7 +322,7 @@ public class LetterboxdLogSyncTask : IScheduledTask
                             {
                                 // Still within the skipped timeframe (same day or earlier)
                                 // If .ignore is missing but SkipTag is present, we still respect the SkipTag until a new date appears.
-                                _logger.LogDebug("Skipping Letterboxd sync for {Movie}. Reason: Previously skipped and no new watch detected (Played: {Played} == Skip: {Skip}).", title, viewingDate.Value.Date, skipDate.Date);
+                                _logger.LogDebug("Skipping Letterboxd sync for {Movie}. Reason: Previously skipped and no new watch detected (Played: {Played} == Skip: {Skip}).", title, viewingDateOnly.Date, skipDate.Date);
                                 continue;
                             }
                         }
@@ -325,8 +331,9 @@ public class LetterboxdLogSyncTask : IScheduledTask
                     // Case 2: Explicit Ignore
                     else if (hasIgnore)
                     {
-                        // Add Skip Tag for today
-                        string todaySkip = $"LetterboxdSkip:{DateTime.Today:yyyy-MM-dd}";
+                        // Add Skip Tag for user's today
+                        DateTime userToday = DateTime.UtcNow.AddHours(account.TimezoneOffset);
+                        string todaySkip = $"LetterboxdSkip:{userToday:yyyy-MM-dd}";
                         if (!movieTags.Contains(todaySkip))
                         {
                             movieTags.Add(todaySkip);
@@ -338,12 +345,6 @@ public class LetterboxdLogSyncTask : IScheduledTask
                         continue;
                     }
                 }
-
-                // Compute viewing date early so the cache check can happen before API calls
-                DateTime adjustedViewingDate = viewingDate.HasValue
-                    ? viewingDate.Value.AddHours(account.TimezoneOffset)
-                    : DateTime.UtcNow;
-                DateTime viewingDateOnly = new DateTime(adjustedViewingDate.Year, adjustedViewingDate.Month, adjustedViewingDate.Day);
 
                 // Check in-memory cache BEFORE any Letterboxd API calls.
                 // This prevents re-querying films that were already confirmed as logged,

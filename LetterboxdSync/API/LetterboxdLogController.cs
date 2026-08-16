@@ -258,6 +258,11 @@ public class LetterboxdLogController : ControllerBase
         _userDataManager.SaveUserData(user, movie, userData, UserDataSaveReason.TogglePlayed, default);
 
         // 2. Update Tags (.ignore and LetterboxdSkip)
+        var config = Plugin.Instance?.Configuration;
+        var account = config?.Accounts.FirstOrDefault(a => a.UserJellyfin == userGuid.ToString("N"));
+        var offset = account?.TimezoneOffset ?? 0;
+        DateTime userToday = DateTime.UtcNow.AddHours(offset);
+
         var tags = movie.Tags.ToList();
         if (request.Watched)
         {
@@ -266,7 +271,7 @@ public class LetterboxdLogController : ControllerBase
                 tags.Add(".ignore");
             }
 
-            var todayTag = $"LetterboxdSkip:{DateTime.Today:yyyy-MM-dd}";
+            var todayTag = $"LetterboxdSkip:{userToday:yyyy-MM-dd}";
             tags.RemoveAll(t => t.StartsWith("LetterboxdSkip:", StringComparison.OrdinalIgnoreCase));
             tags.Add(todayTag);
         }
