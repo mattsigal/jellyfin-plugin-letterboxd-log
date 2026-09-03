@@ -126,6 +126,13 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
         var hasIgnore = movieTags.Contains(".ignore", StringComparer.OrdinalIgnoreCase);
         var skipTag = movieTags.FirstOrDefault(t => t.StartsWith("LetterboxdSkip:", StringComparison.OrdinalIgnoreCase));
 
+        // If explicitly ignored ("Watched (No Sync)"), ALWAYS skip and preserve tag
+        if (hasIgnore)
+        {
+            _logger.LogInformation("Real-time sync: Skipping {Movie} due to .ignore tag", title);
+            return;
+        }
+
         // Compute viewing date early for tag/rewatch comparison
         var viewingDate = DateTime.UtcNow;
         var adjustedViewingDate = viewingDate.AddHours(account.TimezoneOffset);
@@ -138,9 +145,8 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
                 if (viewingDateOnly.Date > skipDate.Date)
                 {
                     _logger.LogInformation("Real-time sync: Rewatch detected for {Movie}: ViewingDate ({View}) > SkipDate ({Skip}). Syncing.", title, viewingDateOnly.Date, skipDate.Date);
-                    // Remove tags — will be re-added upon success
+                    // Remove skip tag — will be re-added upon success
                     movieTags.RemoveAll(t => t.StartsWith("LetterboxdSkip:", StringComparison.OrdinalIgnoreCase));
-                    movieTags.RemoveAll(t => t.Equals(".ignore", StringComparison.OrdinalIgnoreCase));
                 }
                 else
                 {
@@ -148,11 +154,6 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
                     return;
                 }
             }
-        }
-        else if (hasIgnore)
-        {
-            _logger.LogDebug("Real-time sync: Skipping {Movie} due to .ignore tag", title);
-            return;
         }
 
         // Check sync cache
@@ -260,19 +261,13 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
             syncCache[cacheKey] = DateTime.UtcNow;
             SaveSyncCache(syncCache);
 
-            // Add tags after successful sync to keep Jellyfin UI in sync
+            // Add skip tag after successful sync to keep Jellyfin UI in sync
             string todaySkip = $"LetterboxdSkip:{viewingDateOnly:yyyy-MM-dd}";
             bool changed = false;
 
             if (!movieTags.Contains(todaySkip, StringComparer.OrdinalIgnoreCase))
             {
                 movieTags.Add(todaySkip);
-                changed = true;
-            }
-
-            if (!movieTags.Contains(".ignore", StringComparer.OrdinalIgnoreCase))
-            {
-                movieTags.Add(".ignore");
                 changed = true;
             }
 

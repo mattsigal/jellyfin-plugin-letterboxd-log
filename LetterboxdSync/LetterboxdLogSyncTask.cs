@@ -29,7 +29,6 @@ public class LetterboxdLogSyncTask : IScheduledTask
     private static readonly ConcurrentDictionary<string, DateTime> _syncCache = new();
     private static readonly JsonSerializerOptions HistorySerializerOptions = new() { WriteIndented = true };
     private static readonly BaseItemKind[] MovieKindArray = { BaseItemKind.Movie };
-    private static readonly string[] IgnoreTagArray = { ".ignore" };
 
     private readonly ILogger<LetterboxdLogSyncTask> _logger;
     private readonly ILibraryManager _libraryManager;
@@ -173,31 +172,35 @@ public class LetterboxdLogSyncTask : IScheduledTask
             SaveCache();
         }
 
-        // Tag Cleanup Pass: Remove .ignore and LetterboxdSkip from old watches
-        // This resets the UI and facilitates re-watch detection after the filter window.
+        // Tag Cleanup Pass: Remove LetterboxdSkip from old watches
+        // Items with .ignore are explicitly ignored ("Watched No Sync") and must NEVER be stripped.
         try
         {
-            var moviesWithIgnore = _libraryManager.GetItemList(new InternalItemsQuery
+            var moviesWithSkip = _libraryManager.GetItemList(new InternalItemsQuery
             {
                 IncludeItemTypes = MovieKindArray,
-                Tags = IgnoreTagArray,
                 Recursive = true
             });
 
-            if (moviesWithIgnore.Count > 0)
+            if (moviesWithSkip.Count > 0)
             {
                 var cleanupDate = DateTime.Today.AddDays(-14); // 2-week sliding window for tag retention
                 int cleanupCount = 0;
 
-                foreach (var m in moviesWithIgnore)
+                foreach (var m in moviesWithSkip)
                 {
                     var tags = m.Tags.ToList();
+                    // Never touch items with .ignore
+                    if (tags.Contains(".ignore", StringComparer.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
                     var skipTag = tags.FirstOrDefault(t => t.StartsWith("LetterboxdSkip:", StringComparison.OrdinalIgnoreCase));
                     if (skipTag != null && DateTime.TryParse(skipTag.Split(':')[1], out DateTime skipDate))
                     {
                         if (skipDate < cleanupDate)
                         {
-                            tags.RemoveAll(t => t.Equals(".ignore", StringComparison.OrdinalIgnoreCase));
                             tags.RemoveAll(t => t.StartsWith("LetterboxdSkip:", StringComparison.OrdinalIgnoreCase));
                             m.Tags = tags.ToArray();
                             await m.UpdateToRepositoryAsync(ItemUpdateType.MetadataEdit, cancellationToken).ConfigureAwait(false);
@@ -208,7 +211,7 @@ public class LetterboxdLogSyncTask : IScheduledTask
 
                 if (cleanupCount > 0)
                 {
-                    _logger.LogInformation("Cleanup: Removed old .ignore tags from {Count} movies.", cleanupCount);
+                    _logger.LogInformation("Cleanup: Removed old LetterboxdSkip tags from {Count} movies.", cleanupCount);
                 }
             }
         }
@@ -299,7 +302,14 @@ public class LetterboxdLogSyncTask : IScheduledTask
                     bool hasIgnore = movieTags.Contains(".ignore", StringComparer.OrdinalIgnoreCase);
                     var skipTag = movieTags.FirstOrDefault(t => t.StartsWith("LetterboxdSkip:", StringComparison.OrdinalIgnoreCase));
 
-                    // Case 1: Rewatch Detection (Skip Override)
+                    // Case 1: Explicit Ignore - ALWAYS respect .ignore and NEVER sync or strip it
+                    if (hasIgnore)
+                    {
+                        _logger.LogInformation("Skipping Letterboxd sync for {Movie} due to presence of .ignore tag.", title);
+                        continue;
+                    }
+
+                    // Case 2: Rewatch Detection (Skip Override)
                     if (skipTag != null)
                     {
                         if (DateTime.TryParse(skipTag.Split(':')[1], out DateTime skipDate))
@@ -309,9 +319,8 @@ public class LetterboxdLogSyncTask : IScheduledTask
                             {
                                  _logger.LogInformation("Rewatch detected for {Movie}: LastPlayed ({Played}) > SkipDate ({Skip}). Resume syncing.", title, viewingDateOnly.Date, skipDate.Date);
 
-                                 // Remove Skip Tag and .ignore robustly
+                                 // Remove Skip Tag robustly
                                  movieTags.RemoveAll(t => t.StartsWith("LetterboxdSkip:", StringComparison.OrdinalIgnoreCase));
-                                 movieTags.RemoveAll(t => t.Equals(".ignore", StringComparison.OrdinalIgnoreCase));
 
                                  // Commit changes to Metadata
                                  movie.Tags = movieTags.ToArray();
@@ -321,28 +330,10 @@ public class LetterboxdLogSyncTask : IScheduledTask
                             else
                             {
                                 // Still within the skipped timeframe (same day or earlier)
-                                // If .ignore is missing but SkipTag is present, we still respect the SkipTag until a new date appears.
                                 _logger.LogDebug("Skipping Letterboxd sync for {Movie}. Reason: Previously skipped and no new watch detected (Played: {Played} == Skip: {Skip}).", title, viewingDateOnly.Date, skipDate.Date);
                                 continue;
                             }
                         }
-                    }
-
-                    // Case 2: Explicit Ignore
-                    else if (hasIgnore)
-                    {
-                        // Add Skip Tag for user's today
-                        DateTime userToday = DateTime.UtcNow.AddHours(account.TimezoneOffset);
-                        string todaySkip = $"LetterboxdSkip:{userToday:yyyy-MM-dd}";
-                        if (!movieTags.Contains(todaySkip))
-                        {
-                            movieTags.Add(todaySkip);
-                            movie.Tags = movieTags.ToArray();
-                            await movie.UpdateToRepositoryAsync(ItemUpdateType.MetadataEdit, cancellationToken).ConfigureAwait(false);
-                        }
-
-                        _logger.LogInformation("Skipping Letterboxd sync for {Movie} due to presence of .ignore tag.", title);
-                        continue;
                     }
                 }
 
