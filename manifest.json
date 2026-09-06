@@ -13,8 +13,8 @@
         "changelog": "- feat: synchronize movie ratings to Letterboxd diary entries (v1.23.0.7) (6353a94)",
         "targetAbi": "10.11.0.0",
         "sourceUrl": "https://github.com/mattsigal/jellyfin-plugin-letterboxd-log/releases/download/v1.23.0.7/LetterboxdLog-v1.23.0.7.zip",
-        "checksum": "f6a03598b6facd7ad68990c9c0d96fb2",
-        "timestamp": "2026-09-06T17:12:24Z"
+        "checksum": "186f22262550406f1c0a23c5781fac09",
+        "timestamp": "2026-09-06T17:12:31Z"
       },
       {
         "version": "1.23.0.6",
