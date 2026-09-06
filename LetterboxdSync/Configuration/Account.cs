@@ -14,6 +14,8 @@ public class Account
 
     public bool SendFavorite { get; set; }
 
+    public bool SendRating { get; set; } = true;
+
     public bool EnableDateFilter { get; set; }
 
     public int DateFilterDays { get; set; } = 7;

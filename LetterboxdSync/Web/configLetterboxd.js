@@ -172,6 +172,7 @@ export default function (view, params) {
                 view.querySelector('#password').value = configUserFilter.PasswordLetterboxd || '';
                 view.querySelector('#enable').checked = configUserFilter.Enable;
                 view.querySelector('#sendfavorite').checked = configUserFilter.SendFavorite;
+                view.querySelector('#sendrating').checked = configUserFilter.SendRating !== false;
                 view.querySelector('#enabledatefilter').checked = configUserFilter.EnableDateFilter || false;
                 view.querySelector('#datefilterdays').value = configUserFilter.DateFilterDays || 7;
                 view.querySelector('#timezoneoffset').value = configUserFilter.TimezoneOffset || 0;
@@ -186,6 +187,8 @@ export default function (view, params) {
                     const el = view.querySelector(id);
                     if (el) el.checked = false;
                 });
+                const rateEl = view.querySelector('#sendrating');
+                if (rateEl) rateEl.checked = true;
             }
         });
     }
@@ -484,6 +487,7 @@ export default function (view, params) {
                 PasswordLetterboxd: view.querySelector('#password').value,
                 Enable: view.querySelector('#enable').checked,
                 SendFavorite: view.querySelector('#sendfavorite').checked,
+                SendRating: view.querySelector('#sendrating').checked,
                 EnableDateFilter: view.querySelector('#enabledatefilter').checked,
                 DateFilterDays: parseInt(view.querySelector('#datefilterdays').value) || 7,
                 TimezoneOffset: parseInt(view.querySelector('#timezoneoffset').value) || 0,

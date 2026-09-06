@@ -337,11 +337,16 @@ public class LetterboxdLogSyncTask : IScheduledTask
                     }
                 }
 
+                int? jfRating = (account.SendRating && userItemData.Rating.HasValue && userItemData.Rating.Value > 0)
+                    ? (int?)Math.Round(userItemData.Rating.Value)
+                    : null;
+
                 // Check in-memory cache BEFORE any Letterboxd API calls.
                 // This prevents re-querying films that were already confirmed as logged,
                 // even when Letterboxd returns transient errors (e.g. 403).
-                string cacheKey = $"{user.Id:N}:{movie.Id:N}:{viewingDateOnly:yyyy-MM-dd}";
-                if (_syncCache.ContainsKey(cacheKey))
+                string cacheKey = $"{user.Id:N}:{movie.Id:N}:{viewingDateOnly:yyyy-MM-dd}:r{jfRating ?? 0}";
+                string legacyCacheKey = $"{user.Id:N}:{movie.Id:N}:{viewingDateOnly:yyyy-MM-dd}";
+                if (_syncCache.ContainsKey(cacheKey) || (!jfRating.HasValue && _syncCache.ContainsKey(legacyCacheKey)))
                 {
                     _logger.LogDebug("Cache hit — skipping Letterboxd sync for {Movie} ({Date})", title, viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
                     continue;
@@ -382,17 +387,37 @@ public class LetterboxdLogSyncTask : IScheduledTask
                     _logger.LogDebug("Resolved Letterboxd: {Slug} (filmId={Id}, productionId={Lid}) for {Movie}", filmResult.FilmSlug, filmResult.FilmId, filmResult.ProductionId, title);
                     try
                     {
-                        var dateLastLog = await api.GetDateLastLog(filmResult.FilmSlug).ConfigureAwait(false);
+                        var diaryEntries = await api.GetDiaryEntries(filmResult.FilmSlug).ConfigureAwait(false);
+                        var existingEntry = diaryEntries.FirstOrDefault(e => e.Date.Date == viewingDateOnly.Date);
 
-                        if (dateLastLog != null && dateLastLog.Value.Date == viewingDateOnly.Date)
+                        if (existingEntry != null)
                         {
+                            // Film was already logged on Letterboxd for this date.
+                            // Check if rating needs to be synchronized:
+                            if (account.SendRating && jfRating.HasValue && !string.IsNullOrEmpty(existingEntry.ViewingId) && existingEntry.Rating != jfRating.Value)
+                            {
+                                _logger.LogInformation(
+                                    "Updating Letterboxd rating for {Movie} (ViewingId: {ViewingId}) from {OldRating} to {NewRating}/10 ({Stars}★) User: {Username}",
+                                    title,
+                                    existingEntry.ViewingId,
+                                    existingEntry.Rating?.ToString(CultureInfo.InvariantCulture) ?? "unrated",
+                                    jfRating.Value,
+                                    jfRating.Value / 2.0,
+                                    user.Username);
+
+                                await Task.Delay(500 + Random.Shared.Next(1000), cancellationToken).ConfigureAwait(false);
+                                await api.ChangeViewingRating(existingEntry.ViewingId, jfRating.Value, log: msg => _logger.LogInformation("[ChangeViewingRating] {Message}", msg)).ConfigureAwait(false);
+                            }
+                            else
+                            {
+                                _logger.LogInformation("Film already logged in Letterboxd for this date ({Date}) User: {Username} Movie: {Movie}", viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), user.Username, title);
+                            }
+
                             // Confirmed on Letterboxd — cache it so we don't check again this window
                             if (_syncCache.TryAdd(cacheKey, DateTime.UtcNow))
                             {
                                 SaveCache();
                             }
-
-                            _logger.LogInformation("Film already logged in Letterboxd for this date ({Date}) User: {Username} Movie: {Movie}", viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), user.Username, title);
 
                             AppendHistory(
                                 user.Id.ToString("N"),
@@ -405,12 +430,12 @@ public class LetterboxdLogSyncTask : IScheduledTask
                         else
                         {
                             // Rewatch detection: if there's any prior diary entry, this is a rewatch
-                            bool isRewatch = dateLastLog.HasValue;
+                            bool isRewatch = diaryEntries.Count > 0;
 
                             // human-like delay between films
                             await Task.Delay(1000 + Random.Shared.Next(2000), cancellationToken).ConfigureAwait(false);
 
-                            await api.MarkAsWatched(filmResult.FilmSlug, filmResult.ProductionId, adjustedViewingDate, tags, favorite, rating: null, rewatch: isRewatch, log: msg => _logger.LogInformation("[MarkAsWatched] {Message}", msg)).ConfigureAwait(false);
+                            await api.MarkAsWatched(filmResult.FilmSlug, filmResult.ProductionId, adjustedViewingDate, tags, favorite, rating: jfRating, rewatch: isRewatch, log: msg => _logger.LogInformation("[MarkAsWatched] {Message}", msg)).ConfigureAwait(false);
 
                             // Successfully pushed — cache it
                             if (_syncCache.TryAdd(cacheKey, DateTime.UtcNow))
@@ -419,7 +444,8 @@ public class LetterboxdLogSyncTask : IScheduledTask
                             }
 
                             string rewatchLabel = isRewatch ? " (rewatch)" : string.Empty;
-                            _logger.LogInformation("Film logged{Rewatch} in Letterboxd User: {Username} Movie: {Movie} Date: {ViewingDate}", rewatchLabel, user.Username, title, viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+                            string ratingLabel = jfRating.HasValue ? $" Rating: {jfRating.Value}/10 ({jfRating.Value / 2.0}★)" : string.Empty;
+                            _logger.LogInformation("Film logged{Rewatch} in Letterboxd User: {Username} Movie: {Movie} Date: {ViewingDate}{Rating}", rewatchLabel, user.Username, title, viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), ratingLabel);
 
                             AppendHistory(
                                 user.Id.ToString("N"),

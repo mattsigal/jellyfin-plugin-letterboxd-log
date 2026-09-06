@@ -660,7 +660,7 @@ public class LetterboxdApi : IDisposable
         throw new InvalidOperationException("Failed to submit diary entry after retries.");
     }
 
-    public async Task<DateTime?> GetDateLastLog(string filmSlug)
+    public async Task<List<DiaryEntryResult>> GetDiaryEntries(string filmSlug)
     {
         string url = $"/{_username}/film/{filmSlug}/diary/";
 
@@ -672,34 +672,227 @@ public class LetterboxdApi : IDisposable
         var htmlDoc = new HtmlDocument();
         htmlDoc.LoadHtml(responseHtml);
 
-        var monthElements = htmlDoc.DocumentNode.SelectNodes("//a[contains(@class, 'month')]");
-        var dayElements = htmlDoc.DocumentNode.SelectNodes("//a[contains(@class, 'date') or contains(@class, 'daydate')]");
-        var yearElements = htmlDoc.DocumentNode.SelectNodes("//a[contains(@class, 'year')]");
-
-        var lstDates = new List<DateTime>();
-
-        if (monthElements != null && dayElements != null && yearElements != null)
+        var results = new List<DiaryEntryResult>();
+        var rows = htmlDoc.DocumentNode.SelectNodes("//tr[contains(@class, 'diary-entry-row')]");
+        if (rows != null)
         {
-            var minCount = Math.Min(Math.Min(monthElements.Count, dayElements.Count), yearElements.Count);
-
-            for (int i = 0; i < minCount; i++)
+            foreach (var row in rows)
             {
-                var month = monthElements[i].InnerText?.Trim();
-                var day = dayElements[i].InnerText?.Trim();
-                var year = yearElements[i].InnerText?.Trim();
+                string viewingId = row.GetAttributeValue("data-viewing-id", string.Empty);
+                if (string.IsNullOrEmpty(viewingId))
+                {
+                    var objId = row.GetAttributeValue("data-object-id", string.Empty);
+                    if (objId.StartsWith("viewing:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        viewingId = objId.Substring("viewing:".Length);
+                    }
+                }
 
+                var monthNode = row.SelectSingleNode(".//a[contains(@class, 'month')]");
+                var dayNode = row.SelectSingleNode(".//a[contains(@class, 'daydate') or contains(@class, 'date')]");
+                var yearNode = row.SelectSingleNode(".//a[contains(@class, 'year')]");
+
+                var month = monthNode?.InnerText?.Trim();
+                var day = dayNode?.InnerText?.Trim();
+                var year = yearNode?.InnerText?.Trim();
+
+                DateTime? parsedDate = null;
                 if (!string.IsNullOrEmpty(month) && !string.IsNullOrEmpty(day) && !string.IsNullOrEmpty(year))
                 {
                     var dateString = $"{day} {month} {year}";
-                    if (DateTime.TryParse(dateString, out DateTime parsedDate))
+                    if (DateTime.TryParse(dateString, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime dt))
                     {
-                        lstDates.Add(parsedDate);
+                        parsedDate = dt;
+                    }
+                }
+
+                if (!parsedDate.HasValue)
+                {
+                    var dateMatch = Regex.Match(row.OuterHtml, @"/diary/(?:film/[^/]+/diary/)?for/(\d{4})/(\d{2})/");
+                    if (dateMatch.Success && int.TryParse(dateMatch.Groups[1].Value, out int yr) && int.TryParse(dateMatch.Groups[2].Value, out int mo))
+                    {
+                        int d = 1;
+                        if (!string.IsNullOrEmpty(day) && int.TryParse(day, out int parsedDay))
+                        {
+                            d = parsedDay;
+                        }
+
+                        try
+                        {
+                            parsedDate = new DateTime(yr, mo, Math.Clamp(d, 1, DateTime.DaysInMonth(yr, mo)));
+                        }
+                        catch
+                        {
+                            // fallback
+                        }
+                    }
+                }
+
+                int? rating = null;
+                var rateInput = row.SelectSingleNode(".//input[contains(@class, 'rateit-field')]");
+                if (rateInput != null && int.TryParse(rateInput.GetAttributeValue("value", "0"), out int val) && val > 0)
+                {
+                    rating = val;
+                }
+                else
+                {
+                    var ratedNode = row.SelectSingleNode(".//*[contains(@class, 'rated-')]");
+                    if (ratedNode != null)
+                    {
+                        var classAttr = ratedNode.GetAttributeValue("class", string.Empty);
+                        var match = Regex.Match(classAttr, @"rated-(\d+)");
+                        if (match.Success && int.TryParse(match.Groups[1].Value, out int rVal) && rVal > 0)
+                        {
+                            rating = rVal;
+                        }
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(viewingId))
+                {
+                    results.Add(new DiaryEntryResult(viewingId, parsedDate ?? DateTime.MinValue, rating));
+                }
+            }
+        }
+
+        // Fallback for legacy format if no rows matched
+        if (results.Count == 0)
+        {
+            var monthElements = htmlDoc.DocumentNode.SelectNodes("//a[contains(@class, 'month')]");
+            var dayElements = htmlDoc.DocumentNode.SelectNodes("//a[contains(@class, 'date') or contains(@class, 'daydate')]");
+            var yearElements = htmlDoc.DocumentNode.SelectNodes("//a[contains(@class, 'year')]");
+
+            if (monthElements != null && dayElements != null && yearElements != null)
+            {
+                var minCount = Math.Min(Math.Min(monthElements.Count, dayElements.Count), yearElements.Count);
+                for (int i = 0; i < minCount; i++)
+                {
+                    var month = monthElements[i].InnerText?.Trim();
+                    var day = dayElements[i].InnerText?.Trim();
+                    var year = yearElements[i].InnerText?.Trim();
+
+                    if (!string.IsNullOrEmpty(month) && !string.IsNullOrEmpty(day) && !string.IsNullOrEmpty(year))
+                    {
+                        var dateString = $"{day} {month} {year}";
+                        if (DateTime.TryParse(dateString, out DateTime parsedDate))
+                        {
+                            results.Add(new DiaryEntryResult(string.Empty, parsedDate, null));
+                        }
                     }
                 }
             }
         }
 
-        return lstDates.Count > 0 ? lstDates.Max() : null;
+        return results;
+    }
+
+    public async Task<DateTime?> GetDateLastLog(string filmSlug)
+    {
+        var entries = await GetDiaryEntries(filmSlug).ConfigureAwait(false);
+        return entries.Count > 0 ? entries.Max(e => e.Date) : null;
+    }
+
+    public async Task ChangeViewingRating(string viewingId, int rating, Action<string>? log = null)
+    {
+        if (string.IsNullOrWhiteSpace(viewingId))
+        {
+            throw new ArgumentException("viewingId cannot be empty", nameof(viewingId));
+        }
+
+        string url = $"/s/viewing:{viewingId}/change-rating";
+
+        for (int attempt = 0; attempt < 3; attempt++)
+        {
+            if (string.IsNullOrWhiteSpace(_csrf))
+            {
+                await RefreshCsrfCookieAsync().ConfigureAwait(false);
+            }
+
+            log?.Invoke($"Attempt {attempt + 1}: POST {url} | viewingId={viewingId} rating={rating} csrf={_csrf[..Math.Min(8, _csrf.Length)]}...");
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, url);
+            request.Headers.Referrer = new Uri(LetterboxdUrl + "/");
+            request.Headers.TryAddWithoutValidation("Origin", "https://letterboxd.com");
+            request.Headers.TryAddWithoutValidation("x-csrf-token", _csrf);
+            request.Headers.TryAddWithoutValidation("X-Requested-With", "XMLHttpRequest");
+            request.Headers.TryAddWithoutValidation("sec-fetch-dest", "empty");
+            request.Headers.TryAddWithoutValidation("sec-fetch-mode", "cors");
+            request.Headers.TryAddWithoutValidation("sec-fetch-site", "same-origin");
+            request.Headers.Remove("sec-fetch-user");
+            request.Headers.Remove("upgrade-insecure-requests");
+            request.Headers.Accept.Clear();
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/javascript"));
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*", 0.01));
+
+            var formContent = new FormUrlEncodedContent(new[]
+            {
+                new KeyValuePair<string, string>("rating", rating.ToString(CultureInfo.InvariantCulture)),
+                new KeyValuePair<string, string>("__csrf", _csrf)
+            });
+            request.Content = formContent;
+
+            using var response = await _client.SendAsync(request).ConfigureAwait(false);
+            var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            int status = (int)response.StatusCode;
+
+            log?.Invoke($"Response: {status} | BodyLen: {body.Length}");
+
+            if (status == 200)
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(body);
+                    var json = doc.RootElement;
+                    if (json.TryGetProperty("result", out var resEl))
+                    {
+                        if (resEl.ValueKind == JsonValueKind.True)
+                        {
+                            if (json.TryGetProperty("csrf", out var csrfEl) && !string.IsNullOrWhiteSpace(csrfEl.GetString()))
+                            {
+                                _csrf = csrfEl.GetString()!;
+                            }
+
+                            return;
+                        }
+
+                        if (resEl.ValueKind == JsonValueKind.String && resEl.GetString() == "error")
+                        {
+                            string msg = json.TryGetProperty("messages", out var msgs) ? msgs.ToString() : "Unknown error";
+                            if (attempt < 2 && (msg.Contains("expired", StringComparison.OrdinalIgnoreCase) || msg.Contains("try again", StringComparison.OrdinalIgnoreCase)))
+                            {
+                                await RefreshCsrfCookieAsync().ConfigureAwait(false);
+                                continue;
+                            }
+
+                            throw new InvalidOperationException($"Letterboxd error changing rating: {msg}");
+                        }
+                    }
+                }
+                catch (JsonException)
+                {
+                    // Non-JSON 200
+                    return;
+                }
+
+                return;
+            }
+
+            if (status == 403)
+            {
+                if (attempt < 2)
+                {
+                    await RefreshCsrfCookieAsync().ConfigureAwait(false);
+                    continue;
+                }
+
+                throw new InvalidOperationException($"403 Forbidden changing rating for viewing:{viewingId}. Body: " + (body.Length > 300 ? body[..300] : body));
+            }
+
+            throw new InvalidOperationException($"Letterboxd returned {status} on {url}: " + (body.Length > 300 ? body[..300] : body));
+        }
+
+        throw new InvalidOperationException($"Failed to update rating for viewing:{viewingId} after retries.");
     }
 
     protected virtual void Dispose(bool disposing)

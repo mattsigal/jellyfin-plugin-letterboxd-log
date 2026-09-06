@@ -58,6 +58,7 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
     public Task StartAsync(CancellationToken cancellationToken)
     {
         _sessionManager.PlaybackStopped += OnPlaybackStopped;
+        _userDataManager.UserDataSaved += OnUserDataSaved;
         _logger.LogInformation("LetterboxdLog real-time sync handler registered");
         return Task.CompletedTask;
     }
@@ -65,12 +66,198 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
     public Task StopAsync(CancellationToken cancellationToken)
     {
         _sessionManager.PlaybackStopped -= OnPlaybackStopped;
+        _userDataManager.UserDataSaved -= OnUserDataSaved;
         return Task.CompletedTask;
     }
 
     public void Dispose()
     {
         _sessionManager.PlaybackStopped -= OnPlaybackStopped;
+        _userDataManager.UserDataSaved -= OnUserDataSaved;
+    }
+
+    private async void OnUserDataSaved(object? sender, UserDataSaveEventArgs e)
+    {
+        try
+        {
+            _logger.LogInformation(
+                "LetterboxdLog: UserDataSaved event received: Item={ItemName} ({Kind}), Reason={Reason}, User={UserId}, Rating={Rating}",
+                e.Item?.Name ?? "null",
+                e.Item?.GetBaseItemKind(),
+                e.SaveReason,
+                e.UserId,
+                e.UserData?.Rating);
+
+            await HandleUserDataSavedAsync(e).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in LetterboxdLog UserDataSaved handler");
+        }
+    }
+
+    private async Task HandleUserDataSavedAsync(UserDataSaveEventArgs e)
+    {
+        // Only handle movies
+        if (e.Item == null || e.Item.GetBaseItemKind() != BaseItemKind.Movie)
+        {
+            return;
+        }
+
+        // Only handle when rating is present and positive
+        if (!e.UserData.Rating.HasValue || e.UserData.Rating.Value <= 0)
+        {
+            return;
+        }
+
+        var userId = e.UserId;
+        if (userId == Guid.Empty)
+        {
+            return;
+        }
+
+        var user = _userManager.GetUserById(userId);
+        if (user == null)
+        {
+            _logger.LogWarning("LetterboxdLog: UserDataSaved user not found for ID {UserId}", userId);
+            return;
+        }
+
+        var account = Configuration.Accounts.FirstOrDefault(a =>
+            a.UserJellyfin == userId.ToString("N") && a.Enable);
+        if (account == null || !account.SendRating)
+        {
+            _logger.LogInformation("LetterboxdLog: Rating sync skipped for user {User} (SendRating is disabled or account not mapped)", user.Username);
+            return;
+        }
+
+        var movie = e.Item;
+        string title = movie.OriginalTitle ?? movie.Name ?? "Unknown Title";
+
+        // Check ignore tag
+        var movieTags = movie.Tags.ToList();
+        if (movieTags.Contains(".ignore", StringComparer.OrdinalIgnoreCase))
+        {
+            _logger.LogInformation("Real-time rating sync: Skipping {Movie} due to .ignore tag", title);
+            return;
+        }
+
+        _logger.LogInformation("Real-time rating sync: Debouncing rating event for {Movie} (Rating={Rating}) User={User}", title, e.UserData.Rating.Value, user.Username);
+
+        // Brief debounce delay in case user taps multiple stars in quick succession
+        await Task.Delay(1500).ConfigureAwait(false);
+
+        // Re-read user data to get final settled rating
+        var freshData = _userDataManager.GetUserData(user, movie);
+        if (freshData == null || !freshData.Rating.HasValue || freshData.Rating.Value <= 0)
+        {
+            return;
+        }
+
+        int jfRating = (int)Math.Round(freshData.Rating.Value);
+
+        // Authenticate with Letterboxd
+        var api = new LetterboxdApi(account.CookiesUserAgent ?? account.UserAgent ?? string.Empty);
+        try
+        {
+            api.SetRawCookies(account.CookiesRaw ?? account.Cookie);
+            await api.Authenticate(account.UserLetterboxd ?? string.Empty, account.PasswordLetterboxd ?? string.Empty).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Real-time rating sync: Auth failed for user {User}", user.Username);
+            return;
+        }
+
+        var filmResult = await ResolveFilmAsync(api, movie, title).ConfigureAwait(false);
+        if (filmResult == null)
+        {
+            _logger.LogWarning("Real-time rating sync: Could not find {Movie} on Letterboxd", title);
+            return;
+        }
+
+        try
+        {
+            var diaryEntries = await api.GetDiaryEntries(filmResult.FilmSlug).ConfigureAwait(false);
+            if (diaryEntries.Count == 0)
+            {
+                _logger.LogInformation("Real-time rating sync: No diary entries found on Letterboxd for {Movie}. Rating sync applies to logged viewings.", title);
+                return;
+            }
+
+            DiaryEntryResult? targetEntry = null;
+            if (freshData.LastPlayedDate.HasValue)
+            {
+                var adjustedDate = freshData.LastPlayedDate.Value.AddHours(account.TimezoneOffset);
+                var viewingDateOnly = adjustedDate.Date;
+                targetEntry = diaryEntries.FirstOrDefault(entry => entry.Date.Date == viewingDateOnly);
+            }
+
+            targetEntry ??= diaryEntries.OrderByDescending(entry => entry.Date).FirstOrDefault();
+
+            if (targetEntry != null && !string.IsNullOrEmpty(targetEntry.ViewingId))
+            {
+                if (targetEntry.Rating == jfRating)
+                {
+                    _logger.LogInformation("Real-time rating sync: {Movie} is already rated {Rating}/10 on Letterboxd", title, jfRating);
+                    return;
+                }
+
+                _logger.LogInformation(
+                    "Real-time rating sync: Updating Letterboxd rating for {Movie} (ViewingId: {ViewingId}, Current: {CurrentRating}) to {Rating}/10 ({Stars}★) User: {User}",
+                    title,
+                    targetEntry.ViewingId,
+                    targetEntry.Rating?.ToString(CultureInfo.InvariantCulture) ?? "unrated",
+                    jfRating,
+                    jfRating / 2.0,
+                    user.Username);
+
+                await api.ChangeViewingRating(targetEntry.ViewingId, jfRating, log: msg => _logger.LogInformation("[RT-Rating] {Message}", msg)).ConfigureAwait(false);
+
+                // Update cache
+                var viewingDate = freshData.LastPlayedDate ?? DateTime.UtcNow;
+                var adjustedViewingDate = viewingDate.AddHours(account.TimezoneOffset);
+                var viewingDateOnly = new DateTime(adjustedViewingDate.Year, adjustedViewingDate.Month, adjustedViewingDate.Day);
+                string cacheKey = $"{userId:N}:{movie.Id:N}:{viewingDateOnly:yyyy-MM-dd}:r{jfRating}";
+                var syncCache = LoadSyncCache();
+                syncCache[cacheKey] = DateTime.UtcNow;
+                SaveSyncCache(syncCache);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Real-time rating sync: Error updating rating for {Movie}: {Message}", title, ex.Message);
+        }
+    }
+
+    private async Task<FilmResult?> ResolveFilmAsync(LetterboxdApi api, BaseItem movie, string title)
+    {
+        if (int.TryParse(movie.GetProviderId(MetadataProvider.Tmdb), out int tmdbid))
+        {
+            try
+            {
+                return await api.SearchFilmByTmdbId(tmdbid).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Letterboxd lookup: TMDB lookup failed for {Movie}: {Msg}", title, ex.Message);
+            }
+        }
+
+        string? imdbid = movie.GetProviderId(MetadataProvider.Imdb);
+        if (!string.IsNullOrEmpty(imdbid))
+        {
+            try
+            {
+                return await api.SearchFilmByImdbId(imdbid).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Letterboxd lookup: IMDb lookup failed for {Movie}: {Msg}", title, ex.Message);
+            }
+        }
+
+        return null;
     }
 
     private async void OnPlaybackStopped(object? sender, PlaybackStopEventArgs e)
@@ -156,20 +343,24 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
             }
         }
 
+        // Determine user data & rating
+        var userItemData = _userDataManager.GetUserData(user, movie);
+        bool favorite = movie.IsFavoriteOrLiked(user, userItemData) && account.SendFavorite;
+        int? jfRating = (account.SendRating && userItemData?.Rating.HasValue == true && userItemData.Rating.Value > 0)
+            ? (int?)Math.Round(userItemData.Rating.Value)
+            : null;
+
         // Check sync cache
-        string cacheKey = $"{userId:N}:{movie.Id:N}:{viewingDateOnly:yyyy-MM-dd}";
+        string cacheKey = $"{userId:N}:{movie.Id:N}:{viewingDateOnly:yyyy-MM-dd}:r{jfRating ?? 0}";
+        string legacyCacheKey = $"{userId:N}:{movie.Id:N}:{viewingDateOnly:yyyy-MM-dd}";
         var syncCache = LoadSyncCache();
-        if (syncCache.ContainsKey(cacheKey))
+        if (syncCache.ContainsKey(cacheKey) || (!jfRating.HasValue && syncCache.ContainsKey(legacyCacheKey)))
         {
             _logger.LogDebug("Real-time sync: Cache hit for {Movie} ({Date}), skipping", title, viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
             return;
         }
 
         _logger.LogInformation("Real-time sync: Processing {Movie} for user {User}", title, user.Username);
-
-        // Determine favorite status
-        var userItemData = _userDataManager.GetUserData(user, movie);
-        bool favorite = movie.IsFavoriteOrLiked(user, userItemData) && account.SendFavorite;
 
         // Authenticate with Letterboxd
         var api = new LetterboxdApi(account.CookiesUserAgent ?? account.UserAgent ?? string.Empty);
@@ -185,35 +376,7 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
         }
 
         // Find the film on Letterboxd
-        FilmResult? filmResult = null;
-        if (int.TryParse(movie.GetProviderId(MetadataProvider.Tmdb), out int tmdbid))
-        {
-            try
-            {
-                filmResult = await api.SearchFilmByTmdbId(tmdbid).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning("Real-time sync: TMDB lookup failed for {Movie}: {Msg}", title, ex.Message);
-            }
-        }
-
-        if (filmResult == null)
-        {
-            string? imdbid = movie.GetProviderId(MetadataProvider.Imdb);
-            if (!string.IsNullOrEmpty(imdbid))
-            {
-                try
-                {
-                    filmResult = await api.SearchFilmByImdbId(imdbid).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError("Real-time sync: IMDb lookup failed for {Movie}: {Msg}", title, ex.Message);
-                }
-            }
-        }
-
+        var filmResult = await ResolveFilmAsync(api, movie, title).ConfigureAwait(false);
         if (filmResult == null)
         {
             _logger.LogWarning("Real-time sync: Could not find {Movie} on Letterboxd", title);
@@ -222,17 +385,34 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
 
         try
         {
-            // Check for existing diary entry (rewatch detection)
-            var dateLastLog = await api.GetDateLastLog(filmResult.FilmSlug).ConfigureAwait(false);
-            bool isRewatch = dateLastLog.HasValue;
+            // Check for existing diary entries (rewatch detection & rating sync)
+            var diaryEntries = await api.GetDiaryEntries(filmResult.FilmSlug).ConfigureAwait(false);
+            var existingEntry = diaryEntries.FirstOrDefault(e => e.Date.Date == viewingDateOnly.Date);
+            bool isRewatch = diaryEntries.Count > 0;
 
-            if (dateLastLog != null && dateLastLog.Value.Date == viewingDateOnly.Date)
+            if (existingEntry != null)
             {
+                if (account.SendRating && jfRating.HasValue && !string.IsNullOrEmpty(existingEntry.ViewingId) && existingEntry.Rating != jfRating.Value)
+                {
+                    _logger.LogInformation(
+                        "Real-time sync: Updating Letterboxd rating for {Movie} (ViewingId: {ViewingId}) to {Rating}/10 ({Stars}★) User: {User}",
+                        title,
+                        existingEntry.ViewingId,
+                        jfRating.Value,
+                        jfRating.Value / 2.0,
+                        user.Username);
+
+                    await api.ChangeViewingRating(existingEntry.ViewingId, jfRating.Value, log: msg => _logger.LogInformation("[RT-Rating] {Message}", msg)).ConfigureAwait(false);
+                }
+                else
+                {
+                    _logger.LogInformation("Real-time sync: Already logged today ({Date}) — {Movie}", viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), title);
+                }
+
                 // Already logged today — cache and skip
                 syncCache[cacheKey] = DateTime.UtcNow;
                 SaveSyncCache(syncCache);
 
-                _logger.LogInformation("Real-time sync: Already logged today ({Date}) — {Movie}", viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), title);
                 AppendHistory(
                     userId.ToString("N"),
                     movie.Id.ToString("N"),
@@ -253,7 +433,7 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
                 adjustedViewingDate,
                 Array.Empty<string>(),
                 favorite,
-                rating: null,
+                rating: jfRating,
                 rewatch: isRewatch,
                 log: msg => _logger.LogInformation("[RT-Sync] {Message}", msg)).ConfigureAwait(false);
 
@@ -278,7 +458,8 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
             }
 
             string rewatchLabel = isRewatch ? " (rewatch)" : string.Empty;
-            _logger.LogInformation("Real-time sync: Logged {Movie}{Rewatch} for {User} on {Date}", title, rewatchLabel, user.Username, viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+            string ratingLabel = jfRating.HasValue ? $" with rating {jfRating.Value}/10 ({jfRating.Value / 2.0}★)" : string.Empty;
+            _logger.LogInformation("Real-time sync: Logged {Movie}{Rewatch} for {User} on {Date}{Rating}", title, rewatchLabel, user.Username, viewingDateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), ratingLabel);
 
             AppendHistory(
                 userId.ToString("N"),
