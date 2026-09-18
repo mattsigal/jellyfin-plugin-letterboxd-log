@@ -80,13 +80,19 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
     {
         try
         {
-            _logger.LogInformation(
+            // Only handle movie rating events; skip playback progress and unrated items immediately to prevent log spam
+            if (e.Item == null || e.Item.GetBaseItemKind() != BaseItemKind.Movie || !e.UserData.Rating.HasValue || e.UserData.Rating.Value <= 0)
+            {
+                return;
+            }
+
+            _logger.LogDebug(
                 "LetterboxdLog: UserDataSaved event received: Item={ItemName} ({Kind}), Reason={Reason}, User={UserId}, Rating={Rating}",
-                e.Item?.Name ?? "null",
-                e.Item?.GetBaseItemKind(),
+                e.Item.Name ?? "null",
+                e.Item.GetBaseItemKind(),
                 e.SaveReason,
                 e.UserId,
-                e.UserData?.Rating);
+                e.UserData.Rating);
 
             await HandleUserDataSavedAsync(e).ConfigureAwait(false);
         }
