@@ -498,7 +498,7 @@ public class LetterboxdApi : IDisposable
         }
     }
 
-    public async Task MarkAsWatched(string filmSlug, string productionId, DateTime? date, string[] tags, bool liked = false, int? rating = null, bool rewatch = false, Action<string>? log = null)
+    public async Task MarkAsWatched(string filmSlug, string productionId, DateTime? date, string[] tags, bool liked = false, double? rating = null, bool rewatch = false, Action<string>? log = null)
     {
         string url = "/api/v0/production-log-entries";
         DateTime viewingDate = date ?? DateTime.Now;
@@ -513,8 +513,6 @@ public class LetterboxdApi : IDisposable
             {
                 throw new InvalidOperationException($"Failed to refresh CSRF from /film/{filmSlug}/: {ex.Message}", ex);
             }
-
-            log?.Invoke($"Attempt {attempt + 1}: POST {url} | slug={filmSlug} productionId={productionId} csrf={_csrf[..Math.Min(8, _csrf.Length)]}... date={viewingDate:yyyy-MM-dd}");
 
             using (var request = new HttpRequestMessage(HttpMethod.Post, url))
             {
@@ -545,8 +543,11 @@ public class LetterboxdApi : IDisposable
 
                 if (rating.HasValue && rating.Value > 0)
                 {
-                    payload["rating"] = rating.Value;
+                    payload["rating"] = Math.Clamp(Math.Round(rating.Value * 2, MidpointRounding.AwayFromZero) / 2.0, 0.5, 5.0);
                 }
+
+                string ratingLog = payload.TryGetValue("rating", out var ratedVal) ? $" rating={ratedVal}" : string.Empty;
+                log?.Invoke($"Attempt {attempt + 1}: POST {url} | slug={filmSlug} productionId={productionId} csrf={_csrf[..Math.Min(8, _csrf.Length)]}... date={viewingDate:yyyy-MM-dd}{ratingLog}");
 
                 var jsonPayload = JsonSerializer.Serialize(payload);
                 request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");

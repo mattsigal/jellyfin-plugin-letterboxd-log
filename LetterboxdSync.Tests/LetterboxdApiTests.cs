@@ -151,5 +151,24 @@ namespace LetterboxdLog.Tests
             var result = LetterboxdApi.NormalizeSlug(input);
             Assert.Equal(expected, result);
         }
+
+        [Theory]
+        [InlineData(0.5, 0.5)]
+        [InlineData(1.0, 1.0)]
+        [InlineData(1.5, 1.5)]
+        [InlineData(2.0, 2.0)]
+        [InlineData(2.5, 2.5)]
+        [InlineData(3.0, 3.0)]
+        [InlineData(3.5, 3.5)]
+        [InlineData(4.0, 4.0)]
+        [InlineData(4.5, 4.5)]
+        [InlineData(5.0, 5.0)]
+        [InlineData(0.2, 0.5)]
+        [InlineData(5.5, 5.0)]
+        public void RatingNormalization_ShouldClampAndRoundToHalfStars(double inputStars, double expectedStars)
+        {
+            double normalized = Math.Clamp(Math.Round(inputStars * 2, MidpointRounding.AwayFromZero) / 2.0, 0.5, 5.0);
+            Assert.Equal(expectedStars, normalized);
+        }
     }
 }

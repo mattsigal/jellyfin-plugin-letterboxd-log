@@ -439,7 +439,7 @@ public sealed class PlaybackHandler : IHostedService, IDisposable
                 adjustedViewingDate,
                 Array.Empty<string>(),
                 favorite,
-                rating: jfRating,
+                rating: jfRating.HasValue ? jfRating.Value / 2.0 : null,
                 rewatch: isRewatch,
                 log: msg => _logger.LogInformation("[RT-Sync] {Message}", msg)).ConfigureAwait(false);
 
